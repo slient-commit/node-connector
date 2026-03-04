@@ -1,0 +1,12 @@
+{
+  "name": "node-connector-scheduler",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "node-cron": "^3.0.3"
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
+}

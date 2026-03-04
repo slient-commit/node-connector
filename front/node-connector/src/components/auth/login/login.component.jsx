@@ -1,4 +1,4 @@
-import { h, Component } from "preact";
+import React, { Component } from "react";
 import AuthService from "../../../services/auth.service";
 import "./login.css";
 
@@ -31,13 +31,13 @@ export default class LoginComponent extends Component {
 
   render() {
     return (
-      <div class="login-wrapper">
-        <div class="login-container">
+      <div className="login-wrapper">
+        <div className="login-container">
           <h2>🔐 Node Connector</h2>
           <form id="loginForm" onSubmit={this.handleSubmit}>
             <input
               type="text"
-              class="login-input"
+              className="login-input"
               id="username"
               name="username"
               placeholder="Username"
@@ -47,13 +47,13 @@ export default class LoginComponent extends Component {
             <input
               type="password"
               id="password"
-              class="login-input"
+              className="login-input"
               placeholder="Password"
               name="password"
               onChange={this.handleChange}
               required
             />
-            <button class="login-button" type="submit">
+            <button className="login-button" type="submit">
               Login
             </button>
             {this.state.error && <p id="error-message">{this.state.error}</p>}

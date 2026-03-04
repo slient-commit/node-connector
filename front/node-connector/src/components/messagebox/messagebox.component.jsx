@@ -1,10 +1,10 @@
-import { h, Component } from "preact";
+import React, { Component } from "react";
 import "./messagebox.css";
 
 class MessageBox extends Component {
   static defaultProps = {
     message: "Default message",
-    type: "info", // Can be 'info', 'warning', 'error'
+    type: "info",
     buttons: [{ label: "OK", onClick: () => {} }],
     onClose: () => {},
   };
@@ -18,7 +18,7 @@ class MessageBox extends Component {
           <p>{message}</p>
           <div className="message-actions">
             {buttons.map((button, index) => (
-              <button class="messagebox-button" key={index} onClick={button.onClick}>
+              <button className="messagebox-button" key={index} onClick={button.onClick}>
                 {button.label}
               </button>
             ))}

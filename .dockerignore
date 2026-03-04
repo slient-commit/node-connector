@@ -1,0 +1,8 @@
+**/node_modules
+**/npm-debug.log
+*.log
+.git
+.gitignore
+.claude/
+api/db/
+api/sheets/

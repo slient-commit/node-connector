@@ -1,6 +1,6 @@
 class API {
   constructor() {
-    this.baseURL = "http://localhost:3001";
+    this.baseURL = window.__API_BASE_URL__ || "http://localhost:3001";
     this.isRefreshing = false;
     this.failedQueue = [];
     this._config();
@@ -80,13 +80,12 @@ class API {
 
       const data = await res.json();
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("refreshToken", data.refreshToken);
+      localStorage.setItem("token", data.accessToken);
 
-      this.processQueue(null, data.token);
+      this.processQueue(null, data.accessToken);
       this.isRefreshing = false;
 
-      return data.token;
+      return data.accessToken;
     } catch (err) {
       this.processQueue(err, null);
       this.isRefreshing = false;

@@ -1,6 +1,5 @@
 // src/services/authService.js
 import API from "../utils/api";
-import jwt from "jsonwebtoken";
 
 class AuthService {
   constructor() {
@@ -38,8 +37,9 @@ class AuthService {
 
   isJwtExpired(token) {
     try {
-      // Decode the token to get the payload
-      const decoded = jwt.decode(token);
+      // Decode the token payload (base64url)
+      const payload = token.split(".")[1];
+      const decoded = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
 
       // Check if the token has an expiration time
       if (!decoded || !decoded.exp) {

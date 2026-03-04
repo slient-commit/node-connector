@@ -58,7 +58,9 @@ router.post("/refresh-token", async (req, res) => {
 // Protected route example
 router.get("/profile", require("../middleware/authenticateToken"), async (req, res) => {
   const user = await User.getUserById(req.user.id);
-  res.json(user);
+  if (!user) return res.sendStatus(404);
+  const { password, refreshToken, ...safeUser } = user;
+  res.json(safeUser);
 });
 
 module.exports = router;

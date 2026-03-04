@@ -6,13 +6,7 @@ class IO {
     const jsonData = JSON.stringify(data, null, 2);
     if (!filename.endsWith(".json")) filename += ".json";
     // Write JSON string to file
-    fs.writeFileSync(filename, jsonData, "utf8", (err) => {
-      if (err) {
-        console.error("Error writing file:", err);
-      } else {
-        console.log("Data written to data.json");
-      }
-    });
+    fs.writeFileSync(filename, jsonData, "utf8");
   }
 
   read(filename) {

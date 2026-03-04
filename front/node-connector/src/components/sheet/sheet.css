@@ -1,8 +1,11 @@
-body {
+html, body {
   margin: 0;
+  padding: 0;
   overflow: hidden;
+  height: 100%;
 }
 svg {
+  display: block;
   width: 100vw;
   height: 100vh;
   background-color: #f0f0f0;
@@ -40,6 +43,23 @@ line.connection {
 
 #toolbar input {
   margin: 10px;
+}
+
+.zoom-btn {
+  width: 30px;
+  height: 30px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  margin-left: 4px;
+  line-height: 1;
+}
+
+.zoom-btn:hover {
+  background: #eee;
 }
 
 .palette-node {

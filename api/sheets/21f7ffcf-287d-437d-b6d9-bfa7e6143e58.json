@@ -42,15 +42,16 @@
           }
         ],
         "position": {
-          "x": 997,
-          "y": 208
+          "x": 1218,
+          "y": 185
         },
         "inputs": [
           "5e92a024-e26f-4ca1-a137-e1ebc28ee2a2"
         ],
         "outputs": [
           "71bc5dd8-6e56-4eda-bfc7-c473f95012fa"
-        ]
+        ],
+        "title": "FTP"
       },
       {
         "id": "c2b1fb09-3a10-4c0d-a03f-c962ddf29657",
@@ -95,11 +96,14 @@
           "b53a5ad8-0cda-481f-917d-bbb28df82820",
           "f482193e-97e3-4958-9bf1-90062c521fda",
           "20e4d931-20e2-411d-b782-f4409a208ccf",
-          "2af9946f-840c-44f1-a491-1905640e5d78"
+          "2af9946f-840c-44f1-a491-1905640e5d78",
+          "97f5efb0-126c-42c4-8d2b-4fbf91de7cbe"
         ],
         "outputs": [
-          "83588b28-cff8-415b-97cb-849eb46249e4"
-        ]
+          "83588b28-cff8-415b-97cb-849eb46249e4",
+          "cc91eca2-6ebf-4cdc-9bb1-735299e61275"
+        ],
+        "title": "FTP"
       },
       {
         "id": "83588b28-cff8-415b-97cb-849eb46249e4",
@@ -133,15 +137,16 @@
           }
         ],
         "position": {
-          "x": 949,
-          "y": 526
+          "x": 929,
+          "y": 522
         },
         "inputs": [
           "c2b1fb09-3a10-4c0d-a03f-c962ddf29657"
         ],
         "outputs": [
           "16e95e37-579a-4b45-96b1-b2534e4a02c5"
-        ]
+        ],
+        "title": "FTP"
       },
       {
         "id": "16e95e37-579a-4b45-96b1-b2534e4a02c5",
@@ -183,7 +188,8 @@
         ],
         "outputs": [
           "23fc5611-c86a-446f-8225-b3e51374668f"
-        ]
+        ],
+        "title": "FTP"
       },
       {
         "id": "5e92a024-e26f-4ca1-a137-e1ebc28ee2a2",
@@ -222,8 +228,8 @@
           }
         ],
         "position": {
-          "x": 796,
-          "y": 210
+          "x": 918,
+          "y": 212
         },
         "inputs": [
           "cbf9a98a-a44d-4f11-8509-3cda95b4bc7b",
@@ -236,7 +242,8 @@
         ],
         "outputs": [
           "24c6501f-843b-43a4-aeb4-20b5e9fac585"
-        ]
+        ],
+        "title": "FTP"
       },
       {
         "id": "c26f6aa8-6d18-4120-a889-fad1fcf3ceae",
@@ -249,7 +256,10 @@
         "inputs": [
           "23fc5611-c86a-446f-8225-b3e51374668f"
         ],
-        "outputs": []
+        "outputs": [
+          "e5f5624d-a368-446a-9a66-24247c1c4b92"
+        ],
+        "title": "Example Plugin"
       },
       {
         "id": "71bc5dd8-6e56-4eda-bfc7-c473f95012fa",
@@ -263,7 +273,8 @@
           "23fc5611-c86a-446f-8225-b3e51374668f",
           "24c6501f-843b-43a4-aeb4-20b5e9fac585"
         ],
-        "outputs": []
+        "outputs": [],
+        "title": "Example Plugin"
       },
       {
         "id": "23fc5611-c86a-446f-8225-b3e51374668f",
@@ -293,7 +304,166 @@
         "outputs": [
           "5e92a024-e26f-4ca1-a137-e1ebc28ee2a2",
           "c2b1fb09-3a10-4c0d-a03f-c962ddf29657"
+        ],
+        "title": "Example Plugin"
+      },
+      {
+        "id": "97f5efb0-126c-42c4-8d2b-4fbf91de7cbe",
+        "className": "FTPTool",
+        "title": "FTP",
+        "params": [
+          {
+            "name": "Host IP",
+            "alias": "host",
+            "type": "string"
+          },
+          {
+            "name": "Username",
+            "alias": "username",
+            "type": "string"
+          },
+          {
+            "name": "Password",
+            "alias": "password",
+            "type": "string"
+          },
+          {
+            "name": "Local file path",
+            "alias": "local_file_path",
+            "type": "string"
+          },
+          {
+            "name": "Remote folder path",
+            "alias": "remote_folder_path",
+            "type": "string",
+            "default": "/"
+          }
+        ],
+        "position": {
+          "x": 585,
+          "y": 735
+        },
+        "inputs": [],
+        "outputs": [
+          "c2b1fb09-3a10-4c0d-a03f-c962ddf29657",
+          "cc91eca2-6ebf-4cdc-9bb1-735299e61275",
+          "2ad621ab-4586-4557-889b-56b9c397fe02"
         ]
+      },
+      {
+        "id": "cc91eca2-6ebf-4cdc-9bb1-735299e61275",
+        "className": "SSHTool",
+        "title": "SSH",
+        "params": [
+          {
+            "name": "Host IP",
+            "alias": "ssh_host",
+            "type": "string"
+          },
+          {
+            "name": "Username",
+            "alias": "ssh_username",
+            "type": "string"
+          },
+          {
+            "name": "Password",
+            "alias": "ssh_password",
+            "type": "string"
+          },
+          {
+            "name": "CMD",
+            "alias": "ssh_cmd",
+            "type": "string"
+          }
+        ],
+        "position": {
+          "x": 1178,
+          "y": 639
+        },
+        "inputs": [
+          "c2b1fb09-3a10-4c0d-a03f-c962ddf29657",
+          "97f5efb0-126c-42c4-8d2b-4fbf91de7cbe"
+        ],
+        "outputs": [
+          "2ad621ab-4586-4557-889b-56b9c397fe02"
+        ]
+      },
+      {
+        "id": "2ad621ab-4586-4557-889b-56b9c397fe02",
+        "className": "FTPTool",
+        "title": "FTP",
+        "params": [
+          {
+            "name": "Host IP",
+            "alias": "host",
+            "type": "string"
+          },
+          {
+            "name": "Username",
+            "alias": "username",
+            "type": "string"
+          },
+          {
+            "name": "Password",
+            "alias": "password",
+            "type": "string"
+          },
+          {
+            "name": "Local file path",
+            "alias": "local_file_path",
+            "type": "string"
+          },
+          {
+            "name": "Remote folder path",
+            "alias": "remote_folder_path",
+            "type": "string",
+            "default": "/"
+          }
+        ],
+        "position": {
+          "x": 1355,
+          "y": 861
+        },
+        "inputs": [
+          "cc91eca2-6ebf-4cdc-9bb1-735299e61275",
+          "97f5efb0-126c-42c4-8d2b-4fbf91de7cbe"
+        ],
+        "outputs": []
+      },
+      {
+        "id": "e5f5624d-a368-446a-9a66-24247c1c4b92",
+        "className": "SSHTool",
+        "title": "SSH",
+        "params": [
+          {
+            "name": "Host IP",
+            "alias": "ssh_host",
+            "type": "string"
+          },
+          {
+            "name": "Username",
+            "alias": "ssh_username",
+            "type": "string"
+          },
+          {
+            "name": "Password",
+            "alias": "ssh_password",
+            "type": "string"
+          },
+          {
+            "name": "CMD",
+            "alias": "ssh_cmd",
+            "type": "string"
+          }
+        ],
+        "position": {
+          "x": 1709,
+          "y": 342
+        },
+        "inputs": [
+          "c26f6aa8-6d18-4120-a889-fad1fcf3ceae"
+        ],
+        "outputs": []
       }
     ]
   }

@@ -24,23 +24,23 @@ class SQLiteManager {
   }
 
   async createTable(name, columns = []) {
-    await this.openConnection().then((db) => {
-      if (db) {
+    return new Promise(async (resolve) => {
+      await this.openConnection().then((db) => {
+        if (!db) return resolve(false);
         let query = `CREATE TABLE IF NOT EXISTS ${name} (id INTEGER PRIMARY KEY AUTOINCREMENT,`;
         columns.forEach((column) => {
           query += `${column.name} ${column.type},`;
         });
         query = query.substring(0, query.length - 1);
         query += ");";
-        db.serialize(() => {
-          db.run(query, (err) => {
-            if (err) {
-              console.error("Error creating table", err.message);
-            }
-            db.close();
-          });
+        db.run(query, (err) => {
+          if (err) {
+            console.error("Error creating table", err.message);
+          }
+          db.close();
+          resolve(true);
         });
-      }
+      });
     });
   }
 
@@ -87,14 +87,17 @@ class SQLiteManager {
         let query = `INSERT INTO ${table_name} (${__columns}) VALUES (${__values_spaces})`;
         let stmt = db.prepare(query);
         stmt.run(values, function (err) {
-          db.close();
           if (err) {
             console.error(`Error inserting to ${table_name}:`, err.message);
+            stmt.finalize();
+            db.close();
             resolve(-1);
+            return;
           }
+          stmt.finalize();
+          db.close();
           resolve(this.lastID);
         });
-        stmt.finalize();
       });
     });
   }
@@ -107,7 +110,7 @@ class SQLiteManager {
         let __where = "";
         let values = [];
         columns_to_update.forEach((column) => {
-          __columns += `${column.name} = ? AND `;
+          __columns += `${column.name} = ?, `;
           values.push(column.value);
         });
 
@@ -115,20 +118,42 @@ class SQLiteManager {
           __where += `${column.name} = ? AND `;
           values.push(column.value);
         });
-        __columns = __columns.substring(0, __columns.length - 5);
+        __columns = __columns.substring(0, __columns.length - 2);
         __where = __where.substring(0, __where.length - 5);
 
         let query = `UPDATE ${table_name} SET ${__columns} WHERE ${__where}`;
         let stmt = db.prepare(query);
         stmt.run(values, function (err) {
-          db.close();
           if (err) {
             console.error(`Error updating ${table_name}:`, err.message);
+            stmt.finalize();
+            db.close();
             resolve(-1);
+            return;
           }
+          stmt.finalize();
+          db.close();
           resolve(this.lastID);
         });
-        stmt.finalize();
+      });
+    });
+  }
+
+  async addColumn(tableName, columnName, columnType, defaultValue = null) {
+    return new Promise(async (resolve) => {
+      await this.openConnection().then((db) => {
+        if (!db) return resolve(false);
+        let query = `ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnType}`;
+        if (defaultValue !== null) {
+          query += ` DEFAULT ${defaultValue}`;
+        }
+        db.run(query, (err) => {
+          if (err && !err.message.includes("duplicate column name")) {
+            console.error("Error adding column:", err.message);
+          }
+          db.close();
+          resolve(true);
+        });
       });
     });
   }

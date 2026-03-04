@@ -48,7 +48,6 @@ class SSHTool extends Plugin {
   }
 
   async logic(params = {}) {
-    console.log("ssh", params);
     let error = false;
     let message = "All commands executed successfully.";
     await new Promise((_resolve) => {
@@ -61,7 +60,6 @@ class SSHTool extends Plugin {
         // privateKey: require('fs').readFileSync('/path/to/private/key'), // Uncomment if using key-based auth
       };
       const commands = params.ssh_cmd.split(",");
-      console.log(commands);
       // Create an SSH client
       const sshClient = new Client();
       // Connect to the SSH server
@@ -88,19 +86,16 @@ class SSHTool extends Plugin {
                 // Handle data from the command execution
                 stream.on("data", (data) => {
                   this.log(`Output of "${cmd}":\n${data}`);
-                  console.log(`Output of "${cmd}":\n${data}`);
                 });
 
                 // Handle errors from the command execution
                 stream.stderr.on("data", (data) => {
                   this.log(`Error output of "${cmd}":\n${data}`, "error");
-                  console.error(`Error output of "${cmd}":\n${data}`);
                 });
 
                 // Resolve the promise when the command finishes
                 stream.on("close", (code, signal) => {
                   this.log(`Command "${cmd}" exited with code ${code}`);
-                  console.log(`Command "${cmd}" exited with code ${code}`);
                   resolve();
                 });
               });
@@ -131,7 +126,6 @@ class SSHTool extends Plugin {
         error = true;
         message = "SSH connection error:" + err.message;
         this.log("SSH connection error:" + err.message, "error");
-        console.error("SSH connection error:", err.message);
         _resolve();
       });
 

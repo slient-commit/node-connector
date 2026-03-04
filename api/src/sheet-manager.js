@@ -17,18 +17,12 @@ class SheetManager {
 
     await new SQLiteManager()
       .insert("sheets", [
-        {
-          name: "name",
-          value: sheet.name,
-        },
-        {
-          name: "uid",
-          value: sheet.uid,
-        },
-        {
-          name: "slug",
-          value: sheet.slug,
-        },
+        { name: "name", value: sheet.name },
+        { name: "uid", value: sheet.uid },
+        { name: "slug", value: sheet.slug },
+        { name: "is_active", value: 1 },
+        { name: "trigger_type", value: "cron" },
+        { name: "cron_schedule", value: "0 * * * *" },
       ])
       .then((lastid) => {
         if (lastid > -1) {
@@ -79,27 +73,22 @@ class SheetManager {
   async removeNode(sheet, node) {
     if (sheet) {
       if (sheet.data.nodes.find((n) => n.id === node.id)) {
-        sheet.data.nodes = sheet.data.nodes.filter((n) => n.id !== node);
+        sheet.data.nodes = sheet.data.nodes.filter((n) => n.id !== node.id);
         this.save(sheet);
       }
     }
   }
 
-  createDbTable() {
-    new SQLiteManager().createTable("sheets", [
-      {
-        name: "name",
-        type: "TEXT",
-      },
-      {
-        name: "uid",
-        type: "TEXT",
-      },
-      {
-        name: "slug",
-        type: "TEXT",
-      },
+  async createDbTable() {
+    const db = new SQLiteManager();
+    await db.createTable("sheets", [
+      { name: "name", type: "TEXT" },
+      { name: "uid", type: "TEXT" },
+      { name: "slug", type: "TEXT" },
     ]);
+    await db.addColumn("sheets", "is_active", "INTEGER", 1);
+    await db.addColumn("sheets", "trigger_type", "TEXT", "'cron'");
+    await db.addColumn("sheets", "cron_schedule", "TEXT", "'0 * * * *'");
   }
 
   slugify(str) {

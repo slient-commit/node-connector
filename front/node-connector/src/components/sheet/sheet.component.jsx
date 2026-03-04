@@ -1,4 +1,4 @@
-import { h, Component } from "preact";
+import React, { Component } from "react";
 import Node from "./../../models/node.model";
 import DataService from "./../../services/data.service";
 import MessageBox from "./../messagebox/messagebox.component";
@@ -69,27 +69,25 @@ export default class SheetComponent extends Component {
 
   init() {
     this.svg = document.getElementById("canvas");
-    this.viewport = this.createSVGElement("g", {});
-    this.svg.appendChild(this.viewport);
 
-    // Create defs for grid pattern
+    // Create defs for grid pattern at SVG root level (not inside viewport)
     const defs = this.createSVGElement("defs", {});
-    this.viewport.appendChild(defs);
+    this.svg.appendChild(defs);
 
-    const pattern = this.createSVGElement("pattern", {
+    this.gridPattern = this.createSVGElement("pattern", {
       id: "gridPattern",
       width: 40,
       height: 40,
       patternUnits: "userSpaceOnUse",
     });
-    defs.appendChild(pattern);
+    defs.appendChild(this.gridPattern);
 
     const gridRect = this.createSVGElement("rect", {
       width: 40,
       height: 40,
       fill: "#f9f9f9",
     });
-    pattern.appendChild(gridRect);
+    this.gridPattern.appendChild(gridRect);
 
     const gridLineX = this.createSVGElement("line", {
       x1: 0,
@@ -99,7 +97,7 @@ export default class SheetComponent extends Component {
       stroke: "#ddd",
       "stroke-width": 1,
     });
-    pattern.appendChild(gridLineX);
+    this.gridPattern.appendChild(gridLineX);
 
     const gridLineY = this.createSVGElement("line", {
       x1: 0,
@@ -109,21 +107,51 @@ export default class SheetComponent extends Component {
       stroke: "#ddd",
       "stroke-width": 1,
     });
-    pattern.appendChild(gridLineY);
+    this.gridPattern.appendChild(gridLineY);
 
-    const gridBackground = this.createSVGElement("rect", {
+    // Grid background at SVG root level - always fills the screen
+    this.gridBackground = this.createSVGElement("rect", {
       width: "100%",
       height: "100%",
       fill: "url(#gridPattern)",
     });
-    this.viewport.appendChild(gridBackground);
+    this.svg.appendChild(this.gridBackground);
+
+    // Viewport group for all content (nodes, connections) - on top of grid
+    this.viewport = this.createSVGElement("g", {});
+    this.svg.appendChild(this.viewport);
 
     // Toggle grid on/off
+    const gridBg = this.gridBackground;
     document
       .getElementById("toggleGrid")
       .addEventListener("change", function () {
-        gridBackground.style.display = this.checked ? "block" : "none";
+        gridBg.style.display = this.checked ? "block" : "none";
       });
+  }
+
+  updateGridTransform() {
+    this.gridPattern.setAttribute(
+      "patternTransform",
+      `translate(${this.offsetX}, ${this.offsetY}) scale(${this.scale})`
+    );
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener("mousemove", this.mouseMoveForDraging);
+    document.removeEventListener("mouseup", this.mouseUpForDragging);
+    document.removeEventListener("keydown", this.removeKeyDownEvent);
+    if (this.svg) {
+      this.svg.removeEventListener("wheel", this.svgZoomWithMouse);
+      this.svg.removeEventListener("mousedown", this.svgPanMouseDown);
+      this.svg.removeEventListener("mousemove", this.svgPanMouseMove);
+      this.svg.removeEventListener("mouseup", this.svgPanMouseUp);
+      this.svg.removeEventListener("mouseleave", this.svgPanMouseLeave);
+      this.svg.removeEventListener("drop", this.svgDropEvent);
+    }
+    if (this.viewport) {
+      this.viewport.removeEventListener("contextmenu", this.rightClickRemoveEvent);
+    }
   }
 
   async componentDidMount() {
@@ -195,6 +223,7 @@ export default class SheetComponent extends Component {
       y2: cy,
       stroke: "blue",
       "stroke-width": 2,
+      "pointer-events": "none",
     });
     this.viewport.appendChild(this.tempLine);
     this.draggingFrom = { node, type, index };
@@ -202,15 +231,20 @@ export default class SheetComponent extends Component {
     document.addEventListener("mouseup", this.endConnection);
   }
 
+  screenToSVG(clientX, clientY) {
+    const point = this.svg.createSVGPoint();
+    point.x = clientX;
+    point.y = clientY;
+    return point.matrixTransform(this.viewport.getScreenCTM().inverse());
+  }
+
   drawTempLine(e) {
     if (!this.tempLine) return;
 
-    const rect = this.viewport.getBoundingClientRect();
-    const x = (e.clientX - rect.left - this.offsetX) / this.scale;
-    const y = (e.clientY - rect.top - this.offsetY) / this.scale;
+    const svgPoint = this.screenToSVG(e.clientX, e.clientY);
 
-    this.tempLine.setAttribute("x2", x);
-    this.tempLine.setAttribute("y2", y);
+    this.tempLine.setAttribute("x2", svgPoint.x);
+    this.tempLine.setAttribute("y2", svgPoint.y);
   }
 
   async endConnection(e) {
@@ -376,23 +410,24 @@ export default class SheetComponent extends Component {
     }
   }
 
-  svgZoomWithMouse(e) {
-    if (!e.ctrlKey) return; // Use Ctrl + Wheel to zoom
-    e.preventDefault();
-
-    const zoomFactor = 0.1;
-
-    if (e.deltaY < 0) {
-      this.scale += zoomFactor;
-    } else {
-      this.scale -= zoomFactor;
-      if (this.scale < 0.3) this.scale = 0.3;
-    }
-
+  applyZoom(newScale) {
+    this.scale = Math.max(0.3, Math.min(5, newScale));
     this.viewport.setAttribute(
       "transform",
       `translate(${this.offsetX}, ${this.offsetY}) scale(${this.scale})`
     );
+    this.updateGridTransform();
+  }
+
+  svgZoomWithMouse(e) {
+    e.preventDefault();
+
+    const zoomFactor = 0.1;
+    if (e.deltaY < 0) {
+      this.applyZoom(this.scale + zoomFactor);
+    } else {
+      this.applyZoom(this.scale - zoomFactor);
+    }
   }
 
   svgPanMouseDown(e) {
@@ -413,6 +448,7 @@ export default class SheetComponent extends Component {
         "transform",
         `translate(${this.offsetX}, ${this.offsetY}) scale(${this.scale})`
       );
+      this.updateGridTransform();
     }
   }
 
@@ -607,8 +643,8 @@ export default class SheetComponent extends Component {
 
     document.addEventListener("mouseup", this.mouseUpForDragging);
 
-    // Zoom with mouse wheel
-    this.svg.addEventListener("wheel", this.svgZoomWithMouse);
+    // Zoom with mouse wheel (passive: false to allow preventDefault)
+    this.svg.addEventListener("wheel", this.svgZoomWithMouse, { passive: false });
 
     // Pan with left mouse click drag
 
@@ -829,55 +865,57 @@ export default class SheetComponent extends Component {
       <div>
         <div id="toolbar">
           <label>
-            <input type="checkbox" id="toggleGrid" checked />
+            <input type="checkbox" id="toggleGrid" defaultChecked />
             Show Grid
           </label>
+          <button className="zoom-btn" onClick={() => this.applyZoom(this.scale + 0.1)}>+</button>
+          <button className="zoom-btn" onClick={() => this.applyZoom(this.scale - 0.1)}>-</button>
         </div>
 
         <div
           id="palette"
-          style="
-            position: absolute;
-            left: 10px;
-            top: 60px;
-            background: #fff;
-            border: 1px solid #ccc;
-            padding: 10px;
-            border-radius: 6px;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-            z-index: 10;
-          "
+          style={{
+            position: "absolute",
+            left: "10px",
+            top: "60px",
+            background: "#fff",
+            border: "1px solid #ccc",
+            padding: "10px",
+            borderRadius: "6px",
+            boxShadow: "0 0 5px rgba(0, 0, 0, 0.2)",
+            zIndex: 10,
+          }}
         >
           <div
-            class="palette-node"
+            className="palette-node"
             draggable="true"
             data-type="Start"
             data-icon="🟢"
             data-inputs="0"
             data-outputs="1"
-            style="cursor: grab; margin: 5px"
+            style={{ cursor: "grab", margin: "5px" }}
           >
             Start Node
           </div>
           <div
-            class="palette-node"
+            className="palette-node"
             draggable="true"
             data-type="Process"
             data-icon="⚙️"
             data-inputs="1"
             data-outputs="1"
-            style="cursor: grab; margin: 5px"
+            style={{ cursor: "grab", margin: "5px" }}
           >
             Process Node
           </div>
           <div
-            class="palette-node"
+            className="palette-node"
             draggable="true"
             data-type="End"
             data-icon="🔴"
             data-inputs="1"
             data-outputs="0"
-            style="cursor: grab; margin: 5px"
+            style={{ cursor: "grab", margin: "5px" }}
           >
             End Node
           </div>
@@ -885,9 +923,9 @@ export default class SheetComponent extends Component {
 
         <svg id="canvas"></svg>
 
-        <div id="node-modal" class="node-modal">
-          <div class="node-modal-content">
-            <span class="node-modal-close" onClick={this.closeModal}>
+        <div id="node-modal" className="node-modal">
+          <div className="node-modal-content">
+            <span className="node-modal-close" onClick={this.closeModal}>
               &times;
             </span>
             <h2>Edit Node</h2>
@@ -899,12 +937,12 @@ export default class SheetComponent extends Component {
             >
               Save Changes
             </button>
-            <button class="execute-button" onClick={this.executeNode}>
-              <i class="fa-solid fa-play"></i> Execute
+            <button className="execute-button" onClick={this.executeNode}>
+              <i className="fa-solid fa-play"></i> Execute
             </button>
             <button
               type="button"
-              class="node-modal-delete-btn"
+              className="node-modal-delete-btn"
               onClick={this.displayMessageBox}
             >
               Delete

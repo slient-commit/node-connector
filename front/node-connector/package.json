@@ -2,25 +2,19 @@
   "name": "node-connector",
   "version": "0.0.1",
   "private": true,
-  "devDependencies": {
-    "preact-scripts": "0.3.0-alpha",
-    "react-test-renderer": "^15.3.0"
-  },
+  "type": "module",
   "dependencies": {
-    "axios": "^1.10.0",
-    "jsonwebtoken": "^9.0.2",
-    "preact": "^10.26.9",
-    "preact-compat": "^3.19.0",
-    "preact-hooks": "^0.0.0-0.0.0",
-    "preact-router": "^4.1.2"
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.4.0",
+    "vite": "^6.3.0"
   },
   "scripts": {
-    "start": "preact-scripts start",
-    "build": "preact-scripts build",
-    "eject": "preact-scripts eject",
-    "test": "preact-scripts test"
-  },
-  "eslintConfig": {
-    "extends": "./node_modules/preact-scripts/config/eslint.js"
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   }
 }

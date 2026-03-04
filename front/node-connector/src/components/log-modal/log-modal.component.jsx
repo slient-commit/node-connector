@@ -1,4 +1,4 @@
-import { h, Component } from "preact";
+import React, { Component } from "react";
 import "./log-modal.css";
 
 class LogModal extends Component {
@@ -10,7 +10,7 @@ class LogModal extends Component {
   }
 
   render() {
-    const { logs, onClose } = this.props; // Logs passed as props from the parent
+    const { logs, onClose } = this.props;
 
     return (
       <div className="log-modal-overlay">

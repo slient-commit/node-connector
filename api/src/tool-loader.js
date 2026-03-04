@@ -20,7 +20,7 @@ class ToolLoader {
 
       if (stat.isDirectory()) {
         // Recursively scan subfolders
-        const nestedClasses = loadClassesFromFolder(fullPath);
+        const nestedClasses = this.loadClassesFromFolder(fullPath);
         classes.push(...nestedClasses);
       } else if (file.endsWith(".js")) {
         try {

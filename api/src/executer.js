@@ -127,7 +127,7 @@ class Executer {
         if (sendProgress)
           sendProgress({
             id: node.id,
-            result: `Error while executiong node: ${err.message}`,
+            result: `Error while executing node: ${err.message}`,
             error: true,
             stage: "executed",
           });
@@ -180,41 +180,21 @@ class Executer {
       addChildrenNodesToExecution(node);
     }
 
-    async function executePromisesSequentially(promises) {
-      const results = [];
-      for (const promise of promises) {
-        try {
-          const result = await promise();
-          results.push(result);
-        } catch (error) {
-          if (sendProgress)
-            sendProgress({
-              id: node.id,
-              result: {},
-              error: true,
-              message: `Promise rejected: ${error.message}`,
-              stage: "executing",
-            });
-        }
-      }
-      return results;
-    }
-
-    await executePromisesSequentially(allPromises)
-      .then((results) => {
-        if (closeSSE) closeSSE();
-      })
-      .catch((error) => {
+    for (const promise of allPromises) {
+      try {
+        await promise;
+      } catch (error) {
         if (sendProgress)
           sendProgress({
-            id: node.id,
+            id: nodeId,
             result: {},
             error: true,
-            message: `Error during sequential execution: ${error.message}`,
+            message: `Promise rejected: ${error.message}`,
             stage: "executing",
           });
-        if (closeSSE) closeSSE();
-      });
+      }
+    }
+    if (closeSSE) closeSSE();
     // // Wait for all nodes to finish executing
     // await Promise.all(allPromises).then((r) => {
     //   if (closeSSE) closeSSE();
@@ -316,7 +296,7 @@ class Executer {
         if (sendProgress)
           sendProgress({
             id: node.id,
-            result: `Error while executiong node: ${err.message}`,
+            result: `Error while executing node: ${err.message}`,
             error: true,
             stage: "executed",
           });
@@ -329,13 +309,15 @@ class Executer {
       for (const outputId of node.node.outputs) {
         const outputNode = nodeMap.get(outputId);
         if (!outputNode) {
-          sendProgress({
-            id: node.id,
-            result: {},
-            error: true,
-            message: `Output node with id ${outputId} not found`,
-            stage: "executing",
-          });
+          if (sendProgress)
+            sendProgress({
+              id: node.id,
+              result: {},
+              error: true,
+              message: `Output node with id ${outputId} not found`,
+              stage: "executing",
+            });
+          continue;
         }
         // No need to wait here, just trigger execution
         allPromises.push(executeNode(outputNode));

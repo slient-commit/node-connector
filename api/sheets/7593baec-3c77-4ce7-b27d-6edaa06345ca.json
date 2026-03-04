@@ -10,8 +10,8 @@
         "className": "Example",
         "params": [],
         "position": {
-          "x": 460,
-          "y": 308
+          "x": 488,
+          "y": 301
         },
         "inputs": [],
         "outputs": [
@@ -56,8 +56,8 @@
           }
         ],
         "position": {
-          "x": 672,
-          "y": 308
+          "x": 679,
+          "y": 304
         },
         "inputs": [
           "230d3607-e942-4e33-ac09-a9d74ee4b4e3"
@@ -94,17 +94,19 @@
             "name": "CMD",
             "alias": "ssh_cmd",
             "type": "string",
-            "value": "sudo docker --host tcp://127.0.0.1:2375 load -i /uploads/nastro.tar"
+            "value": "sudo docker --host tcp://127.0.0.1:2375 load -i ./uploads/nastro.tar"
           }
         ],
         "position": {
-          "x": 903,
-          "y": 308
+          "x": 878,
+          "y": 303
         },
         "inputs": [
           "1b2ed653-f87d-4cfc-aa43-5ec0009a0669"
         ],
-        "outputs": []
+        "outputs": [
+          "fcc47448-f741-49f2-a614-2d019c03655d"
+        ]
       },
       {
         "id": "fcc47448-f741-49f2-a614-2d019c03655d",
@@ -116,12 +118,34 @@
             "alias": "script",
             "type": "big_string",
             "default": "// write a javascript code",
-            "value": "const directoryPath = 'C:/nastro'; // Replace with your folder path\n\ntry {\n  const files = fs.readdirSync(directoryPath);\n  console.log(`Files in ${directoryPath}:`);\n  files.forEach(file => {\n    console.log(file);\n  });\n} catch (err) {\n  console.error('Error reading directory:', err);\n}"
+            "value": "const fs = require(\"fs\");\n\nconst directoryPath = 'C:/nastro'; // Replace with your folder path\n\ntry {\n  const files = fs.readdirSync(directoryPath);\n  console.log(`Files in ${directoryPath}:`);\n  files.forEach(file => {\n    console.log(file);\n  });\n} catch (err) {\n  console.error('Error reading directory:', err);\n}\nreturn {x: 5};"
           }
         ],
         "position": {
-          "x": 1035,
-          "y": 401
+          "x": 1071,
+          "y": 306
+        },
+        "inputs": [
+          "80ab62d7-4aca-4f31-b556-2c7f341f26f9"
+        ],
+        "outputs": []
+      },
+      {
+        "id": "48d9ba0e-57f7-427d-9ffe-6017563d227d",
+        "className": "CustomScript",
+        "title": "Checking OS",
+        "params": [
+          {
+            "name": "Script",
+            "alias": "script",
+            "type": "big_string",
+            "default": "// write a javascript code",
+            "value": "const { exec } = require('child_process');\nconst os = require('os');\n\n// Function to check if a process is running\nfunction isProcessRunning(processName, callback) {\n  // Determine the command based on the operating system\n  const platform = os.platform();\n  let cmd;\n\n  if (platform === 'win32') {\n    // Windows: Use tasklist to list all processes\n    cmd = `tasklist`;\n  } else {\n    // Unix/Linux/Mac: Use ps to list all processes\n    cmd = `ps -A`;\n  }\n\n  // Execute the command to list processes\n  exec(cmd, (error, stdout, stderr) => {\n    if (error) {\n      return callback(error, null);\n    }\n    if (stderr) {\n      return callback(new Error(stderr), null);\n    }\n\n    // Check if the process name exists in the output\n    const isRunning = stdout.toLowerCase().includes(processName.toLowerCase());\n    callback(null, isRunning);\n  });\n}\nasync function main(params) {\n// Example usage\nconst processName = 'node'; // Replace with the process name or script name you want to check\nisProcessRunning(processName, (err, isRunning) => {\n  if (err) {\n    console.error('Error checking process:', err.message);\n    return;\n  }\n\n  if (isRunning) {\n    console.log(`The process \"${processName}\" is currently running.`);\n  } else {\n    console.log(`The process \"${processName}\" is NOT running.`);\n  }\n});\n}"
+          }
+        ],
+        "position": {
+          "x": 619,
+          "y": 515
         },
         "inputs": [],
         "outputs": []

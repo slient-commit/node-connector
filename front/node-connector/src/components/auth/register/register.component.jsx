@@ -1,9 +1,8 @@
-import { h } from "preact";
-import { Component } from "preact";
+import React, { Component } from "react";
 import AuthService from "../../../services/auth.service";
 import "./register.css";
 
-export default class Registeromponent extends Component {
+export default class RegisterComponent extends Component {
   constructor() {
     super();
     this.authService = new AuthService();
@@ -24,7 +23,7 @@ export default class Registeromponent extends Component {
     const { username, password, confirm_password } = this.state;
     if (password !== confirm_password) {
       this.setState({
-        error: "The confirme password is not the same as the password",
+        error: "The confirmed password is not the same as the password",
       });
       return;
     }
@@ -33,19 +32,18 @@ export default class Registeromponent extends Component {
     } catch (err) {
       this.setState({ error: "Register failed" });
     }
-    this.setState({ error: "Register failed" });
   };
 
   render() {
     return (
-      <div class="register-wrapper">
-        <div class="login-container">
+      <div className="register-wrapper">
+        <div className="login-container">
           <h2>📝 Create Account</h2>
           <form id="registerForm" onSubmit={this.handleSubmit}>
             <input
               type="text"
               id="username"
-              class="register-input"
+              className="register-input"
               name="username"
               placeholder="Username"
               onChange={this.handleChange}
@@ -53,7 +51,7 @@ export default class Registeromponent extends Component {
             />
             <input
               type="password"
-              class="register-input"
+              className="register-input"
               id="password"
               name="password"
               placeholder="Password"
@@ -62,20 +60,20 @@ export default class Registeromponent extends Component {
             />
             <input
               type="password"
-              class="register-input"
+              className="register-input"
               id="confirmPassword"
               name="confirm_password"
               placeholder="Confirm Password"
               onChange={this.handleChange}
               required
             />
-            <button class="register-button" type="submit">Register</button>
+            <button className="register-button" type="submit">Register</button>
             {this.state.error && <p id="error-message">{this.state.error}</p>}
           </form>
-          <p style="margin-top: 15px; font-size: 14px">
+          <p style={{ marginTop: "15px", fontSize: "14px" }}>
             Already have an account?
-            <a href="/login" style="color: #00ffcc; text-decoration: none">
-              Login here
+            <a href="/login" style={{ color: "#00ffcc", textDecoration: "none" }}>
+              {" "}Login here
             </a>
           </p>
         </div>

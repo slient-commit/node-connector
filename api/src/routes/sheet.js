@@ -64,10 +64,12 @@ router.put(
   "/update",
   require("../middleware/authenticateToken"),
   async (req, res) => {
-    const sheet = await new SheetManager().load(req.body.sheet.uid);
+    const sheetManager = new SheetManager();
+    const sheet = await sheetManager.load(req.body.sheet.uid);
     if (sheet) {
       sheet.name = req.body.sheet.name;
       sheet.data.nodes = req.body.sheet.data.nodes;
+      sheetManager.save(sheet);
       res.json({ message: "sheet updated" });
       return;
     }
@@ -209,6 +211,191 @@ router.put(
     }
     res.statusCode = 500;
     res.json({ message: "sheet no found" });
+  }
+);
+
+// --- Sheet settings ---
+
+router.put(
+  "/settings",
+  require("../middleware/authenticateToken"),
+  async (req, res) => {
+    const { uid, name, is_active, trigger_type, cron_schedule } = req.body;
+
+    if (!uid) {
+      return res.status(400).json({ message: "uid is required" });
+    }
+    if (trigger_type !== undefined && !["cron", "webhook"].includes(trigger_type)) {
+      return res.status(400).json({ message: "trigger_type must be 'cron' or 'webhook'" });
+    }
+    if (is_active !== undefined && ![0, 1].includes(is_active)) {
+      return res.status(400).json({ message: "is_active must be 0 or 1" });
+    }
+
+    const columnsToUpdate = [];
+    if (name !== undefined) columnsToUpdate.push({ name: "name", value: name });
+    if (is_active !== undefined) columnsToUpdate.push({ name: "is_active", value: is_active });
+    if (trigger_type !== undefined) columnsToUpdate.push({ name: "trigger_type", value: trigger_type });
+    if (cron_schedule !== undefined) columnsToUpdate.push({ name: "cron_schedule", value: cron_schedule });
+
+    if (columnsToUpdate.length === 0) {
+      return res.status(400).json({ message: "No settings to update" });
+    }
+
+    await new SQLiteManager().update("sheets", columnsToUpdate, [{ name: "uid", value: uid }]);
+    res.json({ message: "settings updated" });
+  }
+);
+
+// --- Internal endpoints (for scheduler service) ---
+
+router.get(
+  "/list-internal",
+  require("../middleware/authenticateInternalKey"),
+  async (req, res) => {
+    let sheets = [];
+    await new SQLiteManager().select("sheets").then((_sheets) => {
+      sheets = _sheets;
+    });
+    res.json(sheets);
+  }
+);
+
+router.post(
+  "/execute-batch",
+  require("../middleware/authenticateInternalKey"),
+  async (req, res) => {
+    const sheetUid = req.body.sheetUid;
+    if (!sheetUid) {
+      return res.status(400).json({ message: "sheetUid is required" });
+    }
+
+    // Check if sheet is active
+    const row = await new SQLiteManager().selectBy("sheets", { name: "uid", value: sheetUid });
+    if (row && !row.is_active) {
+      return res.status(403).json({ message: "sheet is inactive", sheetUid });
+    }
+
+    const sheets = new SheetManager();
+    const sheet = await sheets.load(sheetUid);
+    if (!sheet) {
+      return res.status(404).json({ message: "sheet not found" });
+    }
+
+    // Find root nodes (no inputs)
+    const rootNodes = sheet.data.nodes.filter(
+      (node) => !node.inputs || node.inputs.length === 0
+    );
+
+    if (rootNodes.length === 0) {
+      return res.json({ message: "no root nodes found", results: [] });
+    }
+
+    const store = sheets.getNodeStore(sheet);
+    const results = [];
+
+    for (const rootNode of rootNodes) {
+      try {
+        await Executer.executeNodes(
+          store,
+          rootNode.id,
+          "./../plugins",
+          null,
+          null
+        );
+
+        // Collect results from executed nodes
+        const executedResults = store
+          .filter((n) => n.isExecuted)
+          .map((n) => ({
+            nodeId: n.node.id,
+            title: n.node.title,
+            result: n.result,
+          }));
+
+        results.push({
+          rootNodeId: rootNode.id,
+          rootNodeTitle: rootNode.title,
+          status: "success",
+          nodes: executedResults,
+        });
+      } catch (err) {
+        results.push({
+          rootNodeId: rootNode.id,
+          rootNodeTitle: rootNode.title,
+          status: "error",
+          error: err.message,
+        });
+      }
+    }
+
+    res.json({ sheetUid, sheetName: sheet.name, results });
+  }
+);
+
+// --- Webhook trigger endpoint ---
+
+router.post(
+  "/webhook/:uid",
+  require("../middleware/authenticateInternalKey"),
+  async (req, res) => {
+    const sheetUid = req.params.uid;
+
+    const row = await new SQLiteManager().selectBy("sheets", { name: "uid", value: sheetUid });
+    if (!row) {
+      return res.status(404).json({ message: "sheet not found" });
+    }
+    if (!row.is_active) {
+      return res.status(403).json({ message: "sheet is inactive" });
+    }
+    if (row.trigger_type !== "webhook") {
+      return res.status(400).json({ message: "sheet is not configured for webhook trigger" });
+    }
+
+    const sheets = new SheetManager();
+    const sheet = await sheets.load(sheetUid);
+    if (!sheet) {
+      return res.status(404).json({ message: "sheet data not found" });
+    }
+
+    const rootNodes = sheet.data.nodes.filter(
+      (node) => !node.inputs || node.inputs.length === 0
+    );
+
+    if (rootNodes.length === 0) {
+      return res.json({ message: "no root nodes found", results: [] });
+    }
+
+    const store = sheets.getNodeStore(sheet);
+    const results = [];
+
+    for (const rootNode of rootNodes) {
+      try {
+        await Executer.executeNodes(store, rootNode.id, "./../plugins", null, null);
+        const executedResults = store
+          .filter((n) => n.isExecuted)
+          .map((n) => ({
+            nodeId: n.node.id,
+            title: n.node.title,
+            result: n.result,
+          }));
+        results.push({
+          rootNodeId: rootNode.id,
+          rootNodeTitle: rootNode.title,
+          status: "success",
+          nodes: executedResults,
+        });
+      } catch (err) {
+        results.push({
+          rootNodeId: rootNode.id,
+          rootNodeTitle: rootNode.title,
+          status: "error",
+          error: err.message,
+        });
+      }
+    }
+
+    res.json({ sheetUid, sheetName: sheet.name, results });
   }
 );
 

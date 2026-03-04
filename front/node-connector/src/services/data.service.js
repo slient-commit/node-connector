@@ -57,6 +57,10 @@ export default class DataService {
     return await this.api.put("/sheet/update", { sheet });
   }
 
+  async updateSheetSettings(uid, settings) {
+    return await this.api.put("/sheet/settings", { uid, ...settings });
+  }
+
   async deleteNode(sheetId, node) {
     return await this.api.put("/sheet/node/delete", { sheetId, node });
   }

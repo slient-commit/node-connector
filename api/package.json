@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
+    "@babel/parser": "^7.28.4",
     "basic-ftp": "^5.0.5",
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",

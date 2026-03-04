@@ -1,5 +1,8 @@
 const Plugin = require("./../src/models/plugin");
-const vm = require("vm");
+const fs = require("fs");
+const { exec } = require("child_process");
+const path = require("path");
+const parser = require("@babel/parser");
 
 class CustomScript extends Plugin {
   description() {
@@ -25,36 +28,80 @@ class CustomScript extends Plugin {
       },
     ];
   }
+  hasMainFunction(codeString) {
+    try {
+      // Parse the code string into an AST
+      const ast = parser.parse(codeString, {
+        sourceType: "module",
+        plugins: ["asyncGenerators", "classProperties", "objectRestSpread"],
+      });
+
+      // Traverse the AST to find an async function named "main"
+      return ast.program.body.some(
+        (node) =>
+          node.type === "FunctionDeclaration" &&
+          node.async &&
+          node.id?.name === "main"
+      );
+    } catch (error) {
+      console.error("Error parsing code:", error.message);
+      return false;
+    }
+  }
 
   async logic(params = {}) {
     let message = "Code executed";
     let error = false;
-    let result = {};
-    await new Promise(async (resolve) => {
-      // Define a sandboxed context for the code to run in
-      const sandbox = {
-        console: console, // Allow access to the console object
+    if (!this.hasMainFunction(params.script)) {
+      return {
+        status: {
+          error: true,
+          message: "Function main not found!",
+        },
+        output: {},
       };
+    }
+    let result = await new Promise(async (resolve) => {
+      let _result = {};
+      // Create a temporary file name
+      const tempFileName = "temp_script.js";
+      const tempFilePath = path.join(__dirname, tempFileName);
+      const code = `${params.script}\n\rawait main()`;
+      // Step 1: Write the code string to the temporary file
+      fs.writeFile(tempFilePath, params.script, (writeErr) => {
+        if (writeErr) {
+          console.error("Error writing temporary file:", writeErr.message);
+          return;
+        }
 
-      // Create a context from the sandbox
-      vm.createContext(sandbox);
+        // Step 2: Execute the temporary file using child_process
+        const command = `node ${tempFilePath}`;
+        exec(command, (execErr, stdout, stderr) => {
+          if (execErr) {
+            error = true;
+            console.error("Error executing script:", execErr.message);
+            message = execErr.message;
+          } else {
+            _result = stdout;
+            if (stderr) {
+              console.error("Script stderr:", stderr);
+            }
+          }
 
-      try {
-        console.log(params);
-        // Run the custom code in the sandboxed context
-        result = vm.runInContext(params.script, sandbox);
-
-        // Output the result of the executed code
-        console.log("Result:", result); // Outputs: Result: 52
-        message = `Code executed: ${result}`;
-      } catch (err) {
-        console.error("Error executing custom code:", err.message);
-        error = true;
-        message = `Error executing custom code: ${err.message}`;
-      }
-      resolve();
+          // Step 3: Delete the temporary file
+          fs.unlink(tempFilePath, (unlinkErr) => {
+            if (unlinkErr) {
+              console.error(
+                "Error deleting temporary file:",
+                unlinkErr.message
+              );
+            }
+          });
+          resolve(_result);
+        });
+      });
     });
-
+    this.log("Output: " + result);
     return {
       status: {
         error: error,
