@@ -299,146 +299,265 @@ line.connection {
   opacity: 0.8; /* Subtle fade effect */
 }
 
-/* Modal Styling */
+/* ── Node Edit Modal ── */
 .node-modal {
-  display: none; /* Hidden by default */
+  display: none;
   position: fixed;
-  z-index: 1;
+  z-index: 100;
   left: 0;
   top: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent overlay */
+  background-color: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  animation: modalOverlayIn 0.2s ease;
+}
+
+@keyframes modalOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideIn {
+  from { opacity: 0; transform: translateY(-20px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .node-modal-content {
-  background-color: #ffffff; /* White background */
-  margin: 10% auto;
-  padding: 20px;
-  border-radius: 8px;
-  width: 500px;
-  max-width: 90%;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+  background-color: #fff;
+  margin: 6% auto;
+  padding: 0;
+  border-radius: 14px;
+  width: 520px;
+  max-width: 92%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.08);
   position: relative;
-}
-
-.node-modal-content h2 {
-  color: #333; /* Dark heading */
-  margin-bottom: 20px;
-  text-align: center;
+  animation: modalSlideIn 0.25s ease;
 }
 
 .node-modal-close {
   position: absolute;
-  right: 10px;
-  top: 5px;
-  color: #aaa; /* Gray close button */
-  font-size: 24px;
+  right: 16px;
+  top: 16px;
+  color: #999;
+  font-size: 22px;
   cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  z-index: 1;
 }
 
 .node-modal-close:hover {
-  color: #333; /* Darker gray on hover */
+  color: #333;
+  background: #f0f0f0;
 }
 
-/* Form Styling */
+/* ── Modal Header ── */
+.node-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 28px 16px;
+}
+
+.node-modal-header-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f0f0f0, #e8e8e8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.node-modal-header-icon img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.node-modal-header-icon span {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.node-modal-header-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.node-modal-header-text h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.node-modal-editing-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.node-modal-divider {
+  height: 1px;
+  background: #eee;
+  margin: 0 28px;
+}
+
+/* ── Form Styling ── */
+#node-modal-editForm {
+  padding: 20px 28px;
+}
+
 #node-modal-editForm div {
-  margin-bottom: 15px;
+  margin-bottom: 16px;
 }
 
 .node-modal-label {
   display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-  color: #333; /* Dark labels */
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  letter-spacing: 0.2px;
 }
 
 .node-modal-input[type="text"],
-.node-modal-input[type="checkbox"] {
+.node-modal-input[type="number"] {
   width: 100%;
-  padding: 8px;
+  padding: 10px 12px;
   box-sizing: border-box;
-  background-color: #f9f9f9; /* Light gray input background */
-  border: 1px solid #ccc; /* Subtle border */
-  color: #333; /* Dark text */
-  font-family: "Arial", sans-serif;
-  border-radius: 4px;
+  background-color: #fafafa;
+  border: 1px solid #e0e0e0;
+  color: #333;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  border-radius: 8px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .node-modal-input[type="text"]:focus,
-.node-modal-input[type="checkbox"]:focus {
+.node-modal-input[type="number"]:focus {
   outline: none;
-  border-color: #aaa; /* Darker border on focus */
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); /* Subtle glow effect */
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  background: #fff;
 }
 
-/* Save Changes Button */
-#node-modal-saveChanges {
-  background-color: #ffffff; /* White background */
-  color: #333;
-  border: 1px solid #ccc; /* Subtle border */
-  padding: 10px 20px;
-  font-size: 16px;
+.node-modal-input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
   cursor: pointer;
-  border-radius: 5px;
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+  accent-color: #2563eb;
+}
+
+/* ── Action Buttons ── */
+.node-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 28px 24px;
+  border-top: 1px solid #f0f0f0;
+}
+
+#node-modal-saveChanges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.2s ease, transform 0.1s ease;
 }
 
 #node-modal-saveChanges:hover {
-  background-color: #f0f0f0; /* Slightly darker on hover */
-  border-color: #aaa; /* Darker border on hover */
+  background: #1d4ed8;
 }
 
-/* Save Changes Button */
-.node-modal-delete-btn {
-  background-color: rgb(202, 18, 18); /* White background */
-  color: #fff;
-  border: 1px solid #ccc; /* Subtle border */
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-  border-radius: 5px;
-  transition: background-color 0.3s ease, border-color 0.3s ease;
-  float: right;
+#node-modal-saveChanges:active {
+  transform: scale(0.97);
 }
 
-.node-modal-delete-btn:hover {
-  background-color: rgb(209, 65, 65); /* Slightly darker on hover */
-  border-color: #aaa; /* Darker border on hover */
-}
-
-/* Button Styling */
 .execute-button {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
   padding: 10px 20px;
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 14px;
+  font-weight: 600;
   color: #fff;
-  background-color: #4caf50; /* Green background */
+  background: #16a34a;
   border: none;
-  border-radius: 5px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin: 0 10px;
+  transition: background 0.2s ease, transform 0.1s ease;
+  margin: 0;
 }
 
-/* Hover Effect */
 .execute-button:hover {
-  background-color: #45a049; /* Darker green on hover */
+  background: #15803d;
 }
 
-/* Active Effect */
 .execute-button:active {
-  transform: scale(0.98); /* Slightly shrink on click */
+  transform: scale(0.97);
 }
 
-/* Icon Styling */
 .execute-button i {
-  margin-right: 8px; /* Space between icon and text */
-  font-size: 18px;
+  font-size: 13px;
+}
+
+.node-modal-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.node-modal-delete-btn:hover {
+  background: #fef2f2;
+  border-color: #f87171;
+}
+
+.node-modal-delete-btn:active {
+  transform: scale(0.97);
 }
 
 .red-circle {

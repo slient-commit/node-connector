@@ -444,6 +444,7 @@
     <div class="nav-group-title">Execution</div>
     <a href="#triggers">Trigger Types</a>
     <a href="#data-flow">Data Flow</a>
+    <a href="#exec-history">Execution History</a>
     <a href="#scheduler">Scheduler</a>
     <a href="#cli">CLI Tool</a>
   </div>
@@ -528,13 +529,20 @@
 |   +-- index.js             # Server entry point
 |   +-- cli.js               # CLI execution tool
 |   +-- plugins/             # Plugin files (auto-loaded)
+|   |   +-- custom-script.js # Custom Node.js scripts
+|   |   +-- ssh.js           # SSH remote commands
+|   |   +-- ftp.js           # FTP file upload
+|   |   +-- rename-file.js   # Move/rename files
+|   |   +-- linux-terminal.js# Bash commands
+|   |   +-- windows-cmd.js   # CMD commands
+|   |   +-- example.js       # Template plugin
 |   +-- db/                  # SQLite database
 |   +-- sheets/              # Sheet JSON files
 |   +-- src/
 |       +-- routes/          # auth.js, sheet.js
-|       +-- models/          # user.js, plugin.js
+|       +-- models/          # user.js, plugin.js, execution-history.js
 |       +-- middleware/      # JWT, internal key auth
-|       +-- executer.js      # Execution engine
+|       +-- executer.js      # Execution engine (multi-input support)
 |       +-- node-executer.js # Node data wrapper
 |       +-- sheet-manager.js # Sheet CRUD + persistence
 |       +-- sqlite-manager.js# Database abstraction
@@ -548,7 +556,14 @@
 |   +-- src/
 |       +-- App.jsx          # Router
 |       +-- components/      # UI components
+|       |   +-- sheet/       # SVG editor + node edit modal
+|       |   +-- list/        # Sheet list + settings
+|       |   +-- log-modal/   # Execution log viewer
+|       |   +-- history-modal/ # Execution history viewer
+|       |   +-- messagebox/  # Confirmation dialogs
 |       +-- services/        # API clients
+|       +-- models/          # node.model.js (SVG node rendering)
++-- docs.html                # Documentation (this file)
 +-- Dockerfile               # Single-image build
 +-- entrypoint.sh            # Container startup
 +-- nginx.conf               # Reverse proxy config
@@ -893,6 +908,7 @@ class MyPlugin extends Plugin {
   name()            { return "My Plugin"; }
   description()     { return "What this plugin does"; }
   icon()            { return "&#x1F527;"; }
+  iconBase64()      { return null; }   // Optional: return "data:image/png;base64,..." for a custom image icon
   tags()            { return ["category"]; }
 
   paramsDefinition() {
@@ -900,7 +916,7 @@ class MyPlugin extends Plugin {
       {
         name: "Param Name",      // Display label
         alias: "param_alias",    // Key in params object
-        type: "string",          // "string" | "big_string"
+        type: "string",          // "string" | "big_string" | "number" | "boolean"
         default: "default value",
         value: undefined
       }
@@ -920,11 +936,20 @@ class MyPlugin extends Plugin {
 
 module.exports = MyPlugin;</code></pre>
 
+  <h3>Plugin Icons</h3>
+  <p>Plugins support two icon modes:</p>
+  <ul>
+    <li><strong>Emoji (default)</strong> &mdash; Return an emoji string from <code>icon()</code>. Rendered as SVG <code>&lt;text&gt;</code> on the canvas and <code>&lt;span&gt;</code> in the palette.</li>
+    <li><strong>Base64 image</strong> &mdash; Override <code>iconBase64()</code> to return a data URI (e.g., <code>"data:image/png;base64,..."</code>). Rendered as SVG <code>&lt;image&gt;</code> on the canvas and <code>&lt;img&gt;</code> in the palette. The emoji icon serves as a fallback if <code>iconBase64()</code> returns <code>null</code>.</li>
+  </ul>
+
   <h3>Parameter Types</h3>
   <table>
     <tr><th>Type</th><th>UI Rendered As</th></tr>
     <tr><td><code>string</code></td><td>Single-line text input</td></tr>
     <tr><td><code>big_string</code></td><td>Multi-line textarea (code editor)</td></tr>
+    <tr><td><code>number</code></td><td>Numeric input</td></tr>
+    <tr><td><code>boolean</code></td><td>Checkbox</td></tr>
   </table>
 
   <h3>Return Format</h3>
@@ -1032,6 +1057,42 @@ module.exports = MyPlugin;</code></pre>
 
   <div class="plugin-card">
     <div class="plugin-header">
+      <span class="plugin-icon">&#x1F427;</span>
+      <span class="plugin-name">Linux Terminal</span>
+      <span class="badge badge-green">terminal</span>
+      <span class="badge badge-blue">linux</span>
+    </div>
+    <div class="plugin-file">api/plugins/linux-terminal.js</div>
+    <div class="plugin-desc">Execute bash/shell commands on a Linux system. Auto-detects the platform and uses the appropriate shell.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>command</code></td><td>big_string</td><td><code>ls -la</code></td><td>Shell command to execute</td></tr>
+      <tr><td><code>working_directory</code></td><td>string</td><td><code>/data</code></td><td>Working directory (defaults to <code>process.cwd()</code> on Windows)</td></tr>
+      <tr><td><code>timeout</code></td><td>number</td><td><code>30000</code></td><td>Maximum execution time in milliseconds</td></tr>
+    </table>
+    <p><strong>Output:</strong> <code>{ result: "stdout content", exitCode: 0 }</code> &mdash; If stdout is valid JSON, it is parsed into the output object.</p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">&#x1FA9F;</span>
+      <span class="plugin-name">Windows CMD</span>
+      <span class="badge badge-green">terminal</span>
+      <span class="badge badge-orange">windows</span>
+    </div>
+    <div class="plugin-file">api/plugins/windows-cmd.js</div>
+    <div class="plugin-desc">Execute CMD commands on a Windows system. Falls back to <code>/bin/bash</code> when running inside a Linux Docker container.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>command</code></td><td>big_string</td><td><code>dir</code></td><td>CMD command to execute</td></tr>
+      <tr><td><code>working_directory</code></td><td>string</td><td><code>/data</code></td><td>Working directory (defaults to <code>process.cwd()</code> on Windows)</td></tr>
+      <tr><td><code>timeout</code></td><td>number</td><td><code>30000</code></td><td>Maximum execution time in milliseconds</td></tr>
+    </table>
+    <p><strong>Output:</strong> <code>{ result: "stdout content", exitCode: 0 }</code> &mdash; If stdout is valid JSON, it is parsed into the output object.</p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
       <span class="plugin-icon">&#x1F31F;</span>
       <span class="plugin-name">Example Plugin</span>
       <span class="badge badge-green">example</span>
@@ -1066,6 +1127,7 @@ class MyPlugin extends Plugin {
   name()        { return "My Plugin"; }
   description() { return "Describe what it does"; }
   icon()        { return "&#x1F680;"; }
+  // iconBase64()  { return "data:image/png;base64,..."; }  // Optional: custom image icon
   tags()        { return ["custom"]; }
 
   paramsDefinition() {
@@ -1157,6 +1219,28 @@ module.exports = MyPlugin;</code></pre>
     <tr><td>Key not found</td><td>Placeholder left unchanged: <code>{{unknown}}</code></td></tr>
   </table>
 
+  <h3>Multi-Input Nodes</h3>
+  <p>When a node has multiple input connections, the execution engine enforces these rules:</p>
+  <ol>
+    <li><strong>Wait for all inputs</strong> &mdash; The node will not execute until <em>all</em> upstream input nodes have completed.</li>
+    <li><strong>Stop on failure</strong> &mdash; If any input node fails (error or exception), the dependent node is skipped with a "Skipped: a previous node failed" message. This failure propagates to all downstream nodes.</li>
+    <li><strong>Merge all outputs</strong> &mdash; Outputs from all input nodes are merged into a single <code>params.input</code> object. If multiple inputs have the same output key, the last one wins (in connection order).</li>
+  </ol>
+
+  <div class="flow">
+    <span class="flow-step">Node A completes</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Node B completes</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Both outputs merged</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Node C executes</span>
+  </div>
+
+  <div class="info-box warning">
+    <strong>Important:</strong> If Node A fails, Node C (and all its downstream nodes) will be skipped &mdash; even if Node B succeeded.
+  </div>
+
   <h3>Accessing Input Programmatically</h3>
 
   <h4>Built-in Plugins (SSH, FTP, Rename File)</h4>
@@ -1205,6 +1289,51 @@ async function main() {
   console.log("Moved:", input.filename, "from", input.source_path);
   output({ status: "done" });
 }</code></pre>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- EXECUTION HISTORY                           -->
+<!-- ════════════════════════════════════════════ -->
+<section id="exec-history">
+  <h2>Execution History</h2>
+  <p>Every non-test execution (cron, webhook, or terminal) is recorded in the execution history. Test executions from the UI editor are <strong>not</strong> recorded.</p>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/sheet/history/:uid</span>
+    </div>
+    <div class="endpoint-desc">Get execution history for a sheet, ordered by most recent first (limit 100).</div>
+    <div class="endpoint-detail"><strong>Auth:</strong> JWT</div>
+    <div class="endpoint-detail"><strong>Response:</strong> Array of history records</div>
+  </div>
+
+  <pre><code>// History record
+{
+  "id": 1,
+  "sheet_uid": "abc-123",
+  "sheet_name": "My Workflow",
+  "trigger_type": "cron",         // "cron" | "webhook" | "terminal"
+  "status": "success",            // "success" | "error"
+  "started_at": "2025-05-01T12:00:00.000Z",
+  "duration_ms": 1523,
+  "node_count": 4,
+  "error_count": 0,
+  "results_summary": "{...}"      // JSON string of full results
+}</code></pre>
+
+  <h3>Trigger Type Tracking</h3>
+  <table>
+    <tr><th>Source</th><th>Trigger Type</th><th>How It's Set</th></tr>
+    <tr><td>Scheduler (cron)</td><td><code>"cron"</code></td><td>Included in <code>execute-batch</code> request body</td></tr>
+    <tr><td>Webhook endpoint</td><td><code>"webhook"</code></td><td>Set automatically in webhook handler</td></tr>
+    <tr><td>CLI tool</td><td><code>"terminal"</code></td><td>Included in <code>execute-batch</code> request body</td></tr>
+    <tr><td>UI Execute button</td><td>&mdash;</td><td>Not recorded (test execution)</td></tr>
+  </table>
+
+  <div class="info-box note">
+    <strong>UI Access:</strong> Click the blue <strong>History</strong> button in the sheet editor toolbar to view the history modal with expandable rows showing status, trigger type, timestamp, duration, and node count.
+  </div>
 </section>
 
 <!-- ════════════════════════════════════════════ -->
@@ -1283,15 +1412,17 @@ Root: Start Node [success]
     <tr><th>Component</th><th>Description</th></tr>
     <tr><td><strong>ListComponent</strong></td><td>Displays sheets as cards with status badge, trigger summary, and settings gear button. Includes settings modal and create modal.</td></tr>
     <tr><td><strong>SheetComponent</strong></td><td>SVG-based visual editor. Drag plugins from the palette, connect nodes, configure parameters, execute workflows. Supports zoom and pan.</td></tr>
-    <tr><td><strong>Plugin Palette</strong></td><td>Left sidebar listing all plugins, filterable by tag. Drag to canvas to add nodes.</td></tr>
+    <tr><td><strong>Plugin Palette</strong></td><td>Left sidebar listing all plugins, filterable by tag. Supports base64 image icons and emoji icons. Drag to canvas to add nodes.</td></tr>
+    <tr><td><strong>Node Edit Modal</strong></td><td>Opened on double-click of a node. Shows the node's icon and title in the header with an "Editing" tag. Contains the parameter form, Save, Execute, and Delete buttons.</td></tr>
     <tr><td><strong>LogModal</strong></td><td>Displays real-time execution logs streamed via SSE.</td></tr>
+    <tr><td><strong>HistoryModal</strong></td><td>Shows execution history for the current sheet. Expandable rows with status, trigger type, timestamp, duration, and node count.</td></tr>
     <tr><td><strong>MessageBox</strong></td><td>Confirmation dialogs (e.g., delete node).</td></tr>
   </table>
 
   <h3>Sheet Editor Layout</h3>
   <table>
     <tr><th>Area</th><th>Position</th><th>Contents</th></tr>
-    <tr><td><strong>Left Toolbar</strong></td><td>Top-left</td><td><strong>Back</strong> button (return to sheet list) and <strong>Play All</strong> button (execute all root nodes with live progress)</td></tr>
+    <tr><td><strong>Left Toolbar</strong></td><td>Top-left</td><td><strong>Back</strong> button (return to sheet list), <strong>Play All</strong> button (execute all root nodes with live progress), and <strong>History</strong> button (view execution history)</td></tr>
     <tr><td><strong>Right Toolbar</strong></td><td>Top-right</td><td>Grid toggle checkbox, zoom in (+) and zoom out (-) buttons</td></tr>
     <tr><td><strong>Plugin Palette</strong></td><td>Left sidebar</td><td>Tag filter buttons and draggable plugin cards</td></tr>
     <tr><td><strong>Canvas</strong></td><td>Center</td><td>SVG workspace with nodes, connections, pan and zoom</td></tr>
@@ -1326,6 +1457,20 @@ Root: Start Node [success]
   is_active      INTEGER DEFAULT 1,  -- 1 = active, 0 = inactive
   trigger_type   TEXT DEFAULT 'cron', -- 'cron' | 'webhook' | 'terminal'
   cron_schedule  TEXT DEFAULT '0 * * * *'
+);</code></pre>
+
+  <h3>Execution History Table</h3>
+  <pre><code>CREATE TABLE execution_history (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  sheet_uid       TEXT NOT NULL,
+  sheet_name      TEXT,
+  trigger_type    TEXT,              -- 'cron' | 'webhook' | 'terminal'
+  status          TEXT,              -- 'success' | 'error'
+  started_at      TEXT,              -- ISO 8601 timestamp
+  duration_ms     INTEGER,
+  node_count      INTEGER,
+  error_count     INTEGER DEFAULT 0,
+  results_summary TEXT               -- JSON string of full results
 );</code></pre>
 
   <h3>Sheet JSON Files</h3>

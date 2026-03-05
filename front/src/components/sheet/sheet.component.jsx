@@ -669,6 +669,13 @@ export default class SheetComponent extends Component {
 
   editNode(node) {
     this.editedNode = node;
+    this.setState({
+      editedNodeInfo: {
+        title: node.title,
+        icon: node.icon,
+        iconBase64: node.iconBase64,
+      },
+    });
     const modal = document.getElementById("node-modal");
     if (!modal) return;
     const editForm = document.getElementById("node-modal-editForm");
@@ -957,25 +964,40 @@ export default class SheetComponent extends Component {
             <span className="node-modal-close" onClick={this.closeModal}>
               &times;
             </span>
-            <h2>Edit Node</h2>
+            <div className="node-modal-header">
+              <div className="node-modal-header-icon">
+                {this.state.editedNodeInfo?.iconBase64 ? (
+                  <img src={this.state.editedNodeInfo.iconBase64} alt="" />
+                ) : (
+                  <span>{this.state.editedNodeInfo?.icon || "📁"}</span>
+                )}
+              </div>
+              <div className="node-modal-header-text">
+                <h2>{this.state.editedNodeInfo?.title || "Node"}</h2>
+                <span className="node-modal-editing-tag">Editing</span>
+              </div>
+            </div>
+            <div className="node-modal-divider"></div>
             <form id="node-modal-editForm"></form>
-            <button
-              type="button"
-              id="node-modal-saveChanges"
-              onClick={this.saveEditingNode}
-            >
-              Save Changes
-            </button>
-            <button className="execute-button" onClick={this.executeNode}>
-              <i className="fa-solid fa-play"></i> Execute
-            </button>
-            <button
-              type="button"
-              className="node-modal-delete-btn"
-              onClick={this.displayMessageBox}
-            >
-              Delete
-            </button>
+            <div className="node-modal-actions">
+              <button
+                type="button"
+                id="node-modal-saveChanges"
+                onClick={this.saveEditingNode}
+              >
+                <i className="fa-solid fa-floppy-disk"></i> Save
+              </button>
+              <button className="execute-button" onClick={this.executeNode}>
+                <i className="fa-solid fa-play"></i> Execute
+              </button>
+              <button
+                type="button"
+                className="node-modal-delete-btn"
+                onClick={this.displayMessageBox}
+              >
+                <i className="fa-solid fa-trash"></i> Delete
+              </button>
+            </div>
           </div>
         </div>
         {this.state.showLogModal && (
