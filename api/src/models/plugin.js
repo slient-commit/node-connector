@@ -11,6 +11,14 @@ class Plugin {
     return "🌟";
   }
 
+  iconBase64() {
+    return null;
+  }
+
+  tags() {
+    return [];
+  }
+
   paramsDefinition() {
     return [];
   }

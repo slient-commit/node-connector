@@ -4,6 +4,7 @@ import DataService from "./../../services/data.service";
 import MessageBox from "./../messagebox/messagebox.component";
 import "./sheet.css";
 import LogModal from "../log-modal/log-modal.component";
+import HistoryModal from "../history-modal/history-modal.component";
 
 export default class SheetComponent extends Component {
   constructor() {
@@ -11,7 +12,13 @@ export default class SheetComponent extends Component {
     this.state = {
       showMessage: false,
       showLogModal: false,
+      showHistoryModal: false,
+      history: [],
+      historyLoading: false,
       logs: [],
+      plugins: [],
+      allTags: [],
+      activeTag: null,
     };
     this.svg = null;
     this.draggedNode = null;
@@ -48,6 +55,8 @@ export default class SheetComponent extends Component {
     this.deleteNodeFromEdit = this.deleteNodeFromEdit.bind(this);
     this.saveEditingNode = this.saveEditingNode.bind(this);
     this.executeNode = this.executeNode.bind(this);
+    this.executeAll = this.executeAll.bind(this);
+    this.loadHistory = this.loadHistory.bind(this);
     this.updateNode = this.updateNode.bind(this);
   }
 
@@ -168,42 +177,10 @@ export default class SheetComponent extends Component {
     await this.api
       .getPluginsList()
       .then((res) => res.json())
-      .then((nodes) => {
-        this.availablePalettes = nodes;
-        const palette = document.getElementById("palette");
-        palette.innerHTML = "";
-        nodes.forEach((node) => {
-          const node_div = document.createElement("div");
-          node_div.setAttribute("class", "palette-node");
-          node_div.setAttribute("draggable", true);
-          node_div.setAttribute("data-type", node.name);
-          node_div.setAttribute("data-icon", node.icon);
-          node_div.setAttribute("data-id", node.id);
-          node_div.setAttribute("data-inputs", 1);
-          node_div.setAttribute("data-outputs", 1);
-          node_div.setAttribute("style", "cursor: grab; margin: 5px");
-          node_div.innerHTML = `
-                                <div class="card">
-                                  <h3 class="title">${node.icon} ${node.name}</h3>
-                                  <p class="description">
-                                    ${node.description}
-                                  </p>
-                                </div>`;
-
-          node_div.addEventListener("dragstart", function (e) {
-            e.dataTransfer.setData(
-              "text/plain",
-              JSON.stringify({
-                id: this.dataset.id,
-                type: this.dataset.type,
-                icon: this.dataset.icon,
-                inputs: parseInt(this.dataset.inputs),
-                outputs: parseInt(this.dataset.outputs),
-              })
-            );
-          });
-          palette.appendChild(node_div);
-        });
+      .then((plugins) => {
+        this.availablePalettes = plugins;
+        const allTags = [...new Set(plugins.flatMap((p) => p.tags || []))].sort();
+        this.setState({ plugins, allTags });
       });
 
     this.showSheetNodes();
@@ -478,7 +455,8 @@ export default class SheetComponent extends Component {
         ),
         palette.icon,
         1,
-        1
+        1,
+        palette.iconBase64
       );
 
       _node.inputs = node.inputs;
@@ -521,7 +499,7 @@ export default class SheetComponent extends Component {
   async svgDropEvent(e) {
     e.preventDefault();
     const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-    const rect = this.viewport.getBoundingClientRect();
+    const rect = this.svg.getBoundingClientRect();
     const x = (e.clientX - rect.left - this.offsetX) / this.scale;
     const y = (e.clientY - rect.top - this.offsetY) / this.scale;
     const palette = this.availablePalettes.find((x) => x.id === data.id);
@@ -533,7 +511,8 @@ export default class SheetComponent extends Component {
       JSON.parse(JSON.stringify(palette.default_params)),
       palette.icon,
       data.inputs,
-      data.outputs
+      data.outputs,
+      palette.iconBase64
     );
 
     let _continue = false;
@@ -656,20 +635,7 @@ export default class SheetComponent extends Component {
 
     this.svg.addEventListener("mouseleave", this.svgPanMouseLeave);
 
-    // Handle drag start from palette
-    document.querySelectorAll(".palette-node").forEach((item) => {
-      item.addEventListener("dragstart", function (e) {
-        e.dataTransfer.setData(
-          "text/plain",
-          JSON.stringify({
-            type: this.dataset.type,
-            icon: this.dataset.icon,
-            inputs: parseInt(this.dataset.inputs),
-            outputs: parseInt(this.dataset.outputs),
-          })
-        );
-      });
-    });
+    // Drag start is now handled via React onDragStart in the palette JSX
 
     // Handle drop on canvas
     this.svg.addEventListener("dragover", function (e) {
@@ -860,64 +826,127 @@ export default class SheetComponent extends Component {
     }
   }
 
+  executeAll() {
+    const rootNodes = this.nodes.filter((n) => !n.inputs || n.inputs.length === 0);
+    if (rootNodes.length === 0) return;
+
+    this.setState({ logs: [], showLogModal: true });
+
+    const sseCallback = (data) => {
+      const update = JSON.parse(data);
+      const node = this.nodes.find((x) => x.id === update.id);
+      if (node) {
+        this.setState((prevState) => ({
+          logs: [...prevState.logs, `${node.title}: ${update.message}`],
+        }));
+        const circle = node.group.getElementsByTagName("circle")[0];
+        if (update.stage === "executing") {
+          circle.setAttribute("stroke", "#dfd113");
+        } else if (update.stage.trim() === "executed") {
+          setTimeout(() => {
+            circle.setAttribute(
+              "stroke",
+              update.error ? "#9e2121" : "#27d827"
+            );
+          }, 10);
+        }
+      }
+    };
+
+    rootNodes.forEach((rootNode) => {
+      this.api.executeNode(this.sheet.uid, { id: rootNode.id }, sseCallback);
+    });
+  }
+
+  async loadHistory() {
+    this.setState({ historyLoading: true, showHistoryModal: true });
+    try {
+      const res = await this.api.getSheetHistory(this.sheet.uid);
+      const history = await res.json();
+      this.setState({ history, historyLoading: false });
+    } catch (err) {
+      console.error("Failed to load history:", err);
+      this.setState({ history: [], historyLoading: false });
+    }
+  }
+
   render() {
     return (
       <div>
-        <div id="toolbar">
+        <div id="toolbar-left">
+          <button className="toolbar-btn back-btn" onClick={() => { window.location.href = "/editor"; }}>
+            <i className="fa-solid fa-arrow-left"></i> Back
+          </button>
+          <button className="toolbar-btn play-all-btn" onClick={this.executeAll}>
+            <i className="fa-solid fa-play"></i> Play All
+          </button>
+          <button className="toolbar-btn history-btn" onClick={this.loadHistory}>
+            <i className="fa-solid fa-clock-rotate-left"></i> History
+          </button>
+        </div>
+
+        <div id="toolbar-right">
           <label>
             <input type="checkbox" id="toggleGrid" defaultChecked />
-            Show Grid
+            Grid
           </label>
           <button className="zoom-btn" onClick={() => this.applyZoom(this.scale + 0.1)}>+</button>
           <button className="zoom-btn" onClick={() => this.applyZoom(this.scale - 0.1)}>-</button>
         </div>
 
-        <div
-          id="palette"
-          style={{
-            position: "absolute",
-            left: "10px",
-            top: "60px",
-            background: "#fff",
-            border: "1px solid #ccc",
-            padding: "10px",
-            borderRadius: "6px",
-            boxShadow: "0 0 5px rgba(0, 0, 0, 0.2)",
-            zIndex: 10,
-          }}
-        >
-          <div
-            className="palette-node"
-            draggable="true"
-            data-type="Start"
-            data-icon="🟢"
-            data-inputs="0"
-            data-outputs="1"
-            style={{ cursor: "grab", margin: "5px" }}
-          >
-            Start Node
+        <div id="palette">
+          <div className="palette-header">Plugins</div>
+          <div className="palette-tags">
+            <button
+              className={`palette-tag ${this.state.activeTag === null ? "active" : ""}`}
+              onClick={() => this.setState({ activeTag: null })}
+            >
+              All
+            </button>
+            {this.state.allTags.map((tag) => (
+              <button
+                key={tag}
+                className={`palette-tag ${this.state.activeTag === tag ? "active" : ""}`}
+                onClick={() => this.setState({ activeTag: tag })}
+              >
+                {tag}
+              </button>
+            ))}
           </div>
-          <div
-            className="palette-node"
-            draggable="true"
-            data-type="Process"
-            data-icon="⚙️"
-            data-inputs="1"
-            data-outputs="1"
-            style={{ cursor: "grab", margin: "5px" }}
-          >
-            Process Node
-          </div>
-          <div
-            className="palette-node"
-            draggable="true"
-            data-type="End"
-            data-icon="🔴"
-            data-inputs="1"
-            data-outputs="0"
-            style={{ cursor: "grab", margin: "5px" }}
-          >
-            End Node
+          <div className="palette-list">
+            {this.state.plugins
+              .filter(
+                (p) =>
+                  !this.state.activeTag ||
+                  (p.tags && p.tags.includes(this.state.activeTag))
+              )
+              .map((plugin) => (
+                <div
+                  key={plugin.id}
+                  className="palette-node"
+                  draggable="true"
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(
+                      "text/plain",
+                      JSON.stringify({
+                        id: plugin.id,
+                        inputs: 1,
+                        outputs: 1,
+                      })
+                    );
+                  }}
+                >
+                  {plugin.iconBase64 ? (
+                    <img className="palette-node-icon-img" src={plugin.iconBase64} alt="" />
+                  ) : (
+                    <span className="palette-node-icon">{plugin.icon}</span>
+                  )}
+                  <div className="palette-node-info">
+                    <span className="palette-node-name">{plugin.name}</span>
+                    <span className="palette-node-desc">{plugin.description}</span>
+                  </div>
+                </div>
+              ))}
           </div>
         </div>
 
@@ -953,6 +982,13 @@ export default class SheetComponent extends Component {
           <LogModal
             logs={this.state.logs}
             onClose={() => this.setState({ showLogModal: false })}
+          />
+        )}
+        {this.state.showHistoryModal && (
+          <HistoryModal
+            history={this.state.history}
+            loading={this.state.historyLoading}
+            onClose={() => this.setState({ showHistoryModal: false })}
           />
         )}
 

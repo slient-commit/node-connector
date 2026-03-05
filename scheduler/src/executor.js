@@ -24,7 +24,7 @@ async function executeSheet(sheetUid) {
       "Content-Type": "application/json",
       "X-Internal-Key": INTERNAL_API_KEY,
     },
-    body: JSON.stringify({ sheetUid }),
+    body: JSON.stringify({ sheetUid, triggerType: "cron" }),
   });
   if (!res.ok) {
     throw new Error(

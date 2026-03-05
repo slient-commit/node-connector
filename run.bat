@@ -12,7 +12,6 @@ if %errorlevel% neq 0 (
 )
 
 echo Starting container...
-docker run -d -p 80:80 --name node-connector node-connector
-
+@REM docker run -d -p 80:80 --name node-connector node-connector
+docker run -d -p 80:80 --name node-connector -v C:\Users\Kamal\Desktop:/data node-connector
 echo Done! App running at http://localhost
-pause

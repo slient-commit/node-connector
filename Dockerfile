@@ -5,9 +5,9 @@ RUN apk add --no-cache python3 make g++ nginx
 
 # --- Build frontend ---
 WORKDIR /app/front
-COPY front/node-connector/package.json ./
+COPY front/package.json ./
 RUN npm install
-COPY front/node-connector/ .
+COPY front/ .
 RUN npm run build
 
 # Copy build output to nginx html dir

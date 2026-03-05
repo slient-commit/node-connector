@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Node Connector - Documentation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #fafafa;
+      --surface: #ffffff;
+      --text: #1a1a1a;
+      --text-muted: #666;
+      --border: #e5e5e5;
+      --accent: #2563eb;
+      --accent-light: #eff6ff;
+      --code-bg: #1e1e2e;
+      --code-text: #cdd6f4;
+      --green: #16a34a;
+      --orange: #ea580c;
+      --purple: #7c3aed;
+      --red: #dc2626;
+      --nav-width: 260px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    /* ── Sidebar Navigation ── */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: var(--nav-width);
+      height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 24px 0;
+      z-index: 100;
+    }
+
+    nav .logo {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+
+    nav .logo h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    nav .logo span {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    nav .nav-group {
+      padding: 8px 0;
+    }
+
+    nav .nav-group-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      padding: 6px 20px;
+    }
+
+    nav a {
+      display: block;
+      padding: 6px 20px 6px 28px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 13px;
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+    }
+
+    nav a:hover, nav a.active {
+      background: var(--accent-light);
+      color: var(--accent);
+      border-left-color: var(--accent);
+    }
+
+    /* ── Main Content ── */
+    main {
+      margin-left: var(--nav-width);
+      max-width: 860px;
+      padding: 40px 48px 80px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 48px 0 40px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 48px;
+    }
+
+    .hero h1 {
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .hero p {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 600px;
+    }
+
+    .badge-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+    .badge-green  { background: #dcfce7; color: #15803d; }
+    .badge-purple { background: #ede9fe; color: #6d28d9; }
+    .badge-orange { background: #fff7ed; color: #c2410c; }
+
+    /* ── Sections ── */
+    section {
+      margin-bottom: 56px;
+    }
+
+    section > h2 {
+      font-size: 22px;
+      font-weight: 700;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--accent);
+      margin-bottom: 24px;
+      color: var(--text);
+    }
+
+    h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin: 28px 0 12px;
+      color: var(--text);
+    }
+
+    h4 {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 20px 0 8px;
+      color: var(--text-muted);
+    }
+
+    p, li {
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    p { margin-bottom: 12px; }
+
+    ul, ol {
+      padding-left: 20px;
+      margin-bottom: 12px;
+    }
+
+    li { margin-bottom: 4px; }
+
+    /* ── Code ── */
+    pre {
+      background: var(--code-bg);
+      color: var(--code-text);
+      padding: 16px 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.6;
+      margin: 12px 0 16px;
+    }
+
+    code {
+      font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+      font-size: 12.5px;
+    }
+
+    p code, li code, td code {
+      background: #f1f5f9;
+      padding: 1px 6px;
+      border-radius: 4px;
+      color: #e11d48;
+      font-size: 12px;
+    }
+
+    /* ── Tables ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border-bottom: 2px solid var(--border);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    /* ── Endpoint Cards ── */
+    .endpoint {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 12px 0;
+    }
+
+    .endpoint-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .method {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: monospace;
+      color: #fff;
+    }
+
+    .method-get    { background: var(--green); }
+    .method-post   { background: var(--accent); }
+    .method-put    { background: var(--orange); }
+    .method-delete { background: var(--red); }
+
+    .endpoint-path {
+      font-family: monospace;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .endpoint-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .endpoint-detail {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .endpoint-detail strong {
+      color: var(--text);
+    }
+
+    /* ── Plugin Cards ── */
+    .plugin-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 12px 0;
+    }
+
+    .plugin-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .plugin-icon {
+      font-size: 24px;
+    }
+
+    .plugin-name {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .plugin-file {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    .plugin-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 4px 0 10px;
+    }
+
+    /* ── Info Boxes ── */
+    .info-box {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin: 12px 0;
+      font-size: 13px;
+      border-left: 4px solid;
+    }
+
+    .info-box.note {
+      background: #eff6ff;
+      border-color: var(--accent);
+      color: #1e40af;
+    }
+
+    .info-box.warning {
+      background: #fefce8;
+      border-color: #eab308;
+      color: #854d0e;
+    }
+
+    .info-box.tip {
+      background: #f0fdf4;
+      border-color: var(--green);
+      color: #166534;
+    }
+
+    /* ── Architecture Diagram ── */
+    .arch-diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      font-family: monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 16px 0;
+      color: var(--text);
+    }
+
+    /* ── Flow Diagram ── */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+
+    .flow-step {
+      background: var(--accent-light);
+      color: var(--accent);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: 500;
+      font-size: 12px;
+    }
+
+    .flow-arrow {
+      color: var(--text-muted);
+      font-size: 16px;
+    }
+
+    /* ── Directory Tree ── */
+    .tree {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      font-family: monospace;
+      font-size: 12px;
+      line-height: 1.8;
+      white-space: pre;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      nav { display: none; }
+      main { margin-left: 0; padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SIDEBAR NAV                                 -->
+<!-- ════════════════════════════════════════════ -->
+<nav>
+  <div class="logo">
+    <h2>Node Connector</h2>
+    <span>Documentation</span>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">Getting Started</div>
+    <a href="#overview">Overview</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#docker">Docker Deployment</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">API Reference</div>
+    <a href="#auth">Authentication</a>
+    <a href="#sheets">Sheets</a>
+    <a href="#nodes">Nodes</a>
+    <a href="#execution">Execution</a>
+    <a href="#settings">Settings &amp; Triggers</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">Plugins</div>
+    <a href="#plugin-system">Plugin System</a>
+    <a href="#plugins-list">Available Plugins</a>
+    <a href="#plugin-dev">Creating a Plugin</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">Execution</div>
+    <a href="#triggers">Trigger Types</a>
+    <a href="#data-flow">Data Flow</a>
+    <a href="#scheduler">Scheduler</a>
+    <a href="#cli">CLI Tool</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">Frontend</div>
+    <a href="#frontend">Frontend App</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-title">Reference</div>
+    <a href="#database">Database Schema</a>
+    <a href="#env-vars">Environment Variables</a>
+    <a href="#security">Security</a>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- MAIN CONTENT                                -->
+<!-- ════════════════════════════════════════════ -->
+<main>
+
+<!-- ──── HERO ──── -->
+<div class="hero">
+  <h1>Node Connector</h1>
+  <p>A visual workflow automation platform. Build chains of executable plugins, trigger them via cron, webhook, or terminal, and monitor execution in real-time.</p>
+  <div class="badge-row">
+    <span class="badge badge-blue">Express.js 5</span>
+    <span class="badge badge-green">React 19</span>
+    <span class="badge badge-purple">SQLite</span>
+    <span class="badge badge-orange">Docker</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- OVERVIEW                                    -->
+<!-- ════════════════════════════════════════════ -->
+<section id="overview">
+  <h2>Overview</h2>
+  <p>Node Connector lets you create visual workflows by connecting plugin nodes on a canvas. Each node represents an action (run a script, SSH into a server, upload via FTP, rename files, etc.). Nodes pass data from one to the next, forming an execution chain.</p>
+
+  <h3>Key Features</h3>
+  <ul>
+    <li>Visual drag-and-drop node editor with SVG canvas</li>
+    <li>Extensible plugin architecture &mdash; add plugins by dropping a JS file</li>
+    <li>Three trigger modes: Cron (scheduled), Webhook (HTTP), Terminal (manual)</li>
+    <li>Real-time execution monitoring via Server-Sent Events (SSE)</li>
+    <li>Per-sheet scheduling with node-cron</li>
+    <li>Multi-user authentication with JWT</li>
+    <li>Single Docker image deployment (Nginx + API + Scheduler)</li>
+  </ul>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- ARCHITECTURE                                -->
+<!-- ════════════════════════════════════════════ -->
+<section id="architecture">
+  <h2>Architecture</h2>
+
+  <div class="arch-diagram">
++---------------------------------------------------+
+|                   Docker Container                 |
+|                                                    |
+|   +----------+    +-------------+    +-----------+ |
+|   |  Nginx   |    |   API       |    | Scheduler | |
+|   |  :80     |--->|  :3001      |<---|           | |
+|   |          |    |  Express.js |    | node-cron | |
+|   +----------+    +------+------+    +-----------+ |
+|        |                 |                         |
+|        |          +------+------+                  |
+|   Static Files    |   SQLite    |                  |
+|   (React build)   |   + JSON    |                  |
+|                   +-------------+                  |
++---------------------------------------------------+
+        |
+    Port 80 (HTTP)
+  </div>
+
+  <h3>Project Structure</h3>
+  <div class="tree">node-connector/
++-- api/                     # Express.js REST API
+|   +-- index.js             # Server entry point
+|   +-- cli.js               # CLI execution tool
+|   +-- plugins/             # Plugin files (auto-loaded)
+|   +-- db/                  # SQLite database
+|   +-- sheets/              # Sheet JSON files
+|   +-- src/
+|       +-- routes/          # auth.js, sheet.js
+|       +-- models/          # user.js, plugin.js
+|       +-- middleware/      # JWT, internal key auth
+|       +-- executer.js      # Execution engine
+|       +-- node-executer.js # Node data wrapper
+|       +-- sheet-manager.js # Sheet CRUD + persistence
+|       +-- sqlite-manager.js# Database abstraction
+|       +-- tool-loader.js   # Plugin discovery
++-- scheduler/               # Cron scheduler service
+|   +-- index.js             # Entry point
+|   +-- src/
+|       +-- executor.js      # Job sync + execution
+|       +-- logger.js        # Logging
++-- front/                   # React 19 + Vite 6
+|   +-- src/
+|       +-- App.jsx          # Router
+|       +-- components/      # UI components
+|       +-- services/        # API clients
++-- Dockerfile               # Single-image build
++-- entrypoint.sh            # Container startup
++-- nginx.conf               # Reverse proxy config
++-- run.bat                  # Windows build/run script</div>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- DOCKER                                      -->
+<!-- ════════════════════════════════════════════ -->
+<section id="docker">
+  <h2>Docker Deployment</h2>
+
+  <h3>Build &amp; Run</h3>
+  <pre><code>docker build -t node-connector .
+docker run -d -p 80:80 node-connector</code></pre>
+
+  <h3>With Custom Secrets</h3>
+  <pre><code>docker run -d -p 80:80 \
+  -e JWT_SECRET=my_jwt_secret \
+  -e REFRESH_TOKEN_SECRET=my_refresh_secret \
+  -e INTERNAL_API_KEY=my_internal_key \
+  node-connector</code></pre>
+
+  <h3>With Host Volume (for file operations)</h3>
+  <pre><code># Linux / macOS
+docker run -d -p 80:80 -v /path/on/host:/data node-connector
+
+# Windows
+docker run -d -p 80:80 -v C:\Users\You\Desktop:/data node-connector</code></pre>
+
+  <div class="info-box tip">
+    <strong>Tip:</strong> The Custom Script plugin defaults its working directory to <code>/data</code>. Mount your host directory there so scripts can read/write host files.
+  </div>
+
+  <h3>Windows Quick Script (run.bat)</h3>
+  <pre><code>@echo off
+REM Stops existing containers, rebuilds, and starts fresh
+for /f "tokens=*" %%i in ('docker ps -q --filter "ancestor=node-connector"') do docker stop %%i
+for /f "tokens=*" %%i in ('docker ps -aq --filter "ancestor=node-connector"') do docker rm %%i
+docker build -t node-connector .
+docker run -d -p 80:80 --name node-connector node-connector</code></pre>
+
+  <h3>Container Services</h3>
+  <table>
+    <tr><th>Service</th><th>Port</th><th>Description</th></tr>
+    <tr><td>Nginx</td><td>80</td><td>Serves frontend, proxies <code>/api/</code> to API</td></tr>
+    <tr><td>API</td><td>3001 (internal)</td><td>Express.js REST API</td></tr>
+    <tr><td>Scheduler</td><td>-</td><td>Cron job manager, syncs every 30s</td></tr>
+  </table>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- AUTHENTICATION                              -->
+<!-- ════════════════════════════════════════════ -->
+<section id="auth">
+  <h2>Authentication</h2>
+  <p>The API uses JWT-based authentication. Access tokens expire in 15 minutes and can be refreshed using a long-lived refresh token.</p>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/auth/register</span>
+    </div>
+    <div class="endpoint-desc">Create a new user account.</div>
+    <div class="endpoint-detail"><strong>Body:</strong> <code>{ "username": "...", "password": "..." }</code></div>
+    <div class="endpoint-detail"><strong>Response:</strong> <code>201</code> &mdash; <code>{ "message": "User created" }</code></div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/auth/login</span>
+    </div>
+    <div class="endpoint-desc">Login and receive tokens.</div>
+    <div class="endpoint-detail"><strong>Body:</strong> <code>{ "username": "...", "password": "..." }</code></div>
+    <div class="endpoint-detail"><strong>Response:</strong> <code>200</code> &mdash; <code>{ "accessToken": "...", "refreshToken": "..." }</code></div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/auth/refresh-token</span>
+    </div>
+    <div class="endpoint-desc">Get a new access token using a refresh token.</div>
+    <div class="endpoint-detail"><strong>Body:</strong> <code>{ "refreshToken": "..." }</code></div>
+    <div class="endpoint-detail"><strong>Response:</strong> <code>200</code> &mdash; <code>{ "accessToken": "..." }</code></div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/auth/profile</span>
+    </div>
+    <div class="endpoint-desc">Get the authenticated user's profile.</div>
+    <div class="endpoint-detail"><strong>Auth:</strong> <code>Authorization: Bearer &lt;token&gt;</code></div>
+    <div class="endpoint-detail"><strong>Response:</strong> <code>200</code> &mdash; User object (without password)</div>
+  </div>
+
+  <h3>Authentication Headers</h3>
+  <table>
+    <tr><th>Header</th><th>Used By</th><th>Description</th></tr>
+    <tr><td><code>Authorization: Bearer &lt;token&gt;</code></td><td>Frontend</td><td>JWT access token for user endpoints</td></tr>
+    <tr><td><code>X-Internal-Key: &lt;key&gt;</code></td><td>Scheduler, CLI</td><td>Internal API key for service-to-service calls</td></tr>
+  </table>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SHEETS                                      -->
+<!-- ════════════════════════════════════════════ -->
+<section id="sheets">
+  <h2>Sheets</h2>
+  <p>A sheet is a workflow definition containing a graph of connected nodes. Sheet metadata is stored in SQLite; node data is stored as JSON files.</p>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/sheet/list</span>
+    </div>
+    <div class="endpoint-desc">List all sheets for the authenticated user.</div>
+    <div class="endpoint-detail"><strong>Auth:</strong> JWT</div>
+    <div class="endpoint-detail"><strong>Response:</strong> Array of <code>{ id, name, uid, slug, is_active, trigger_type, cron_schedule }</code></div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/sheet/create</span>
+    </div>
+    <div class="endpoint-desc">Create a new sheet.</div>
+    <div class="endpoint-detail"><strong>Body:</strong> <code>{ "name": "My Workflow" }</code></div>
+    <div class="endpoint-detail"><strong>Response:</strong> <code>{ uid, name, slug, data: { nodes: [] } }</code></div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/sheet/get?id=&lt;uid&gt;</span>
+    </div>
+    <div class="endpoint-desc">Get full sheet with all nodes and connections.</div>
+    <div class="endpoint-detail"><strong>Auth:</strong> JWT</div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/sheet/update</span>
+    </div>
+    <div class="endpoint-desc">Update sheet name and node structure.</div>
+    <div class="endpoint-detail"><strong>Body:</strong> <code>{ "sheet": { "uid": "...", "name": "...", "data": { "nodes": [...] } } }</code></div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/sheet/plugins/list</span>
+    </div>
+    <div class="endpoint-desc">List all available plugins with metadata, params, and tags.</div>
+    <div class="endpoint-detail"><strong>Auth:</strong> JWT</div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- NODES                                       -->
+<!-- ════════════════════════════════════════════ -->
+<section id="nodes">
+  <h2>Nodes</h2>
+  <p>Nodes are the building blocks of a workflow. Each node uses a plugin and has configurable parameters, inputs (from upstream nodes), and outputs (to downstream nodes).</p>
+
+  <h3>Node Structure</h3>
+  <pre><code>{
+  "id": "uuid",
+  "title": "Node Title",
+  "className": "CustomScript",   // Plugin class name
+  "position": { "x": 100, "y": 200 },
+  "params": {
+    "0": { "name": "Script", "alias": "script", "type": "big_string", "default": "...", "value": "..." }
+  },
+  "inputs": ["node-id-1"],       // IDs of upstream nodes
+  "outputs": ["node-id-2"]       // IDs of downstream nodes
+}</code></pre>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/sheet/node</span>
+    </div>
+    <div class="endpoint-desc">Add a node to a sheet.</div>
+    <div class="endpoint-detail"><strong>Body:</strong> <code>{ "sheetId": "...", "title": "...", "pluginId": "CustomScript", "position": {x, y}, "params": {} }</code></div>
+    <div class="endpoint-detail"><strong>Response:</strong> <code>{ "id": "new-node-uuid", "message": "created" }</code></div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/sheet/node</span>
+    </div>
+    <div class="endpoint-desc">Update a node's properties (title, params, connections, position).</div>
+    <div class="endpoint-detail"><strong>Body:</strong> <code>{ "sheetId": "...", "node": { "id": "...", ... } }</code></div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/sheet/node/delete</span>
+    </div>
+    <div class="endpoint-desc">Delete a node and clean up its connections.</div>
+    <div class="endpoint-detail"><strong>Body:</strong> <code>{ "sheetId": "...", "node": { "id": "..." } }</code></div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- EXECUTION                                   -->
+<!-- ════════════════════════════════════════════ -->
+<section id="execution">
+  <h2>Execution</h2>
+
+  <h3>Single Node (Interactive)</h3>
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/sheet/node/execute?sheetId=...&amp;nodeId=...&amp;token=...</span>
+    </div>
+    <div class="endpoint-desc">Execute a node and all its downstream nodes with real-time streaming via SSE.</div>
+    <div class="endpoint-detail"><strong>Auth:</strong> JWT via <code>token</code> query param (required for SSE)</div>
+    <div class="endpoint-detail"><strong>Response:</strong> <code>text/event-stream</code> with progress events</div>
+  </div>
+
+  <p>SSE events have this shape:</p>
+  <pre><code>{
+  "id": "node-uuid",
+  "result": { ... },          // Plugin output (after execution)
+  "error": false,
+  "message": "Done",
+  "stage": "executed"          // "executing" | "executed"
+}</code></pre>
+
+  <h3>Batch (All Root Nodes)</h3>
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/sheet/execute-batch</span>
+    </div>
+    <div class="endpoint-desc">Execute all root nodes (nodes with no inputs) and their downstream chains. Used by scheduler, CLI, and webhooks.</div>
+    <div class="endpoint-detail"><strong>Auth:</strong> <code>X-Internal-Key</code></div>
+    <div class="endpoint-detail"><strong>Body:</strong> <code>{ "sheetUid": "..." }</code></div>
+  </div>
+
+  <pre><code>// Response
+{
+  "sheetUid": "...",
+  "sheetName": "My Workflow",
+  "results": [
+    {
+      "rootNodeId": "...",
+      "rootNodeTitle": "Start",
+      "status": "success",
+      "nodes": [
+        { "nodeId": "...", "title": "Custom Script", "result": { ... } }
+      ]
+    }
+  ]
+}</code></pre>
+
+  <h3>Webhook Trigger</h3>
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/sheet/webhook/:uid</span>
+    </div>
+    <div class="endpoint-desc">Trigger execution for a webhook-type sheet. Sheet must be active with <code>trigger_type: "webhook"</code>.</div>
+    <div class="endpoint-detail"><strong>Auth:</strong> <code>X-Internal-Key</code></div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SETTINGS & TRIGGERS                         -->
+<!-- ════════════════════════════════════════════ -->
+<section id="settings">
+  <h2>Settings &amp; Triggers</h2>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-put">PUT</span>
+      <span class="endpoint-path">/sheet/settings</span>
+    </div>
+    <div class="endpoint-desc">Update sheet settings (name, active status, trigger type, cron schedule).</div>
+    <div class="endpoint-detail"><strong>Auth:</strong> JWT</div>
+    <div class="endpoint-detail"><strong>Body:</strong> <code>{ "uid": "...", "name": "...", "is_active": 1, "trigger_type": "cron", "cron_schedule": "*/5 * * * *" }</code></div>
+  </div>
+
+  <h3>Trigger Types</h3>
+  <table>
+    <tr><th>Type</th><th>Value</th><th>How It Works</th></tr>
+    <tr>
+      <td><strong>Cron</strong></td>
+      <td><code>"cron"</code></td>
+      <td>Scheduler automatically executes the sheet on the configured schedule. The <code>cron_schedule</code> field defines timing.</td>
+    </tr>
+    <tr>
+      <td><strong>Webhook</strong></td>
+      <td><code>"webhook"</code></td>
+      <td>Sheet is executed when an HTTP POST is sent to <code>/sheet/webhook/{uid}</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>Terminal</strong></td>
+      <td><code>"terminal"</code></td>
+      <td>Sheet is executed manually via the CLI tool or from the UI's execute button.</td>
+    </tr>
+  </table>
+
+  <h3 id="triggers">Cron Schedule Options</h3>
+  <table>
+    <tr><th>Label</th><th>Expression</th></tr>
+    <tr><td>Every 15 seconds</td><td><code>*/15 * * * * *</code></td></tr>
+    <tr><td>Every 30 seconds</td><td><code>*/30 * * * * *</code></td></tr>
+    <tr><td>Every minute</td><td><code>* * * * *</code></td></tr>
+    <tr><td>Every 3 minutes</td><td><code>*/3 * * * *</code></td></tr>
+    <tr><td>Every 5 minutes</td><td><code>*/5 * * * *</code></td></tr>
+    <tr><td>Every 15 minutes</td><td><code>*/15 * * * *</code></td></tr>
+    <tr><td>Every 30 minutes</td><td><code>*/30 * * * *</code></td></tr>
+    <tr><td>Every 45 minutes</td><td><code>*/45 * * * *</code></td></tr>
+    <tr><td>Every hour</td><td><code>0 * * * *</code></td></tr>
+    <tr><td>Daily at 6 AM</td><td><code>0 6 * * *</code></td></tr>
+    <tr><td>Daily at 9 AM</td><td><code>0 9 * * *</code></td></tr>
+    <tr><td>Daily at 12 PM</td><td><code>0 12 * * *</code></td></tr>
+    <tr><td>Daily at 3 PM</td><td><code>0 15 * * *</code></td></tr>
+    <tr><td>Daily at 6 PM</td><td><code>0 18 * * *</code></td></tr>
+  </table>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- PLUGIN SYSTEM                               -->
+<!-- ════════════════════════════════════════════ -->
+<section id="plugin-system">
+  <h2>Plugin System</h2>
+  <p>Plugins are auto-discovered from the <code>api/plugins/</code> directory. Any <code>.js</code> file exporting a class that extends <code>Plugin</code> is loaded automatically.</p>
+
+  <h3>Base Plugin Class</h3>
+  <pre><code>const Plugin = require("./../src/models/plugin");
+
+class MyPlugin extends Plugin {
+  name()            { return "My Plugin"; }
+  description()     { return "What this plugin does"; }
+  icon()            { return "&#x1F527;"; }
+  tags()            { return ["category"]; }
+
+  paramsDefinition() {
+    return [
+      {
+        name: "Param Name",      // Display label
+        alias: "param_alias",    // Key in params object
+        type: "string",          // "string" | "big_string"
+        default: "default value",
+        value: undefined
+      }
+    ];
+  }
+
+  async logic(params = {}) {
+    // params.param_alias  = this node's configured value
+    // params.input        = output from upstream nodes
+
+    return {
+      status: { error: false, message: "Success" },
+      output: { key: "value" }  // Passed to downstream nodes
+    };
+  }
+}
+
+module.exports = MyPlugin;</code></pre>
+
+  <h3>Parameter Types</h3>
+  <table>
+    <tr><th>Type</th><th>UI Rendered As</th></tr>
+    <tr><td><code>string</code></td><td>Single-line text input</td></tr>
+    <tr><td><code>big_string</code></td><td>Multi-line textarea (code editor)</td></tr>
+  </table>
+
+  <h3>Return Format</h3>
+  <p>Every plugin's <code>logic()</code> must return:</p>
+  <pre><code>{
+  status: {
+    error: boolean,    // true if execution failed
+    message: string    // Human-readable status message
+  },
+  output: { ... }      // Data passed to downstream nodes via params.input
+}</code></pre>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- AVAILABLE PLUGINS                           -->
+<!-- ════════════════════════════════════════════ -->
+<section id="plugins-list">
+  <h2>Available Plugins</h2>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">&#x1F4DC;</span>
+      <span class="plugin-name">Custom Script</span>
+      <span class="badge badge-blue">script</span>
+    </div>
+    <div class="plugin-file">api/plugins/custom-script.js</div>
+    <div class="plugin-desc">Execute custom Node.js code. The script must define an <code>async function main()</code>.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>script</code></td><td>big_string</td><td>Template code</td><td>JavaScript code with <code>async function main()</code></td></tr>
+      <tr><td><code>working_directory</code></td><td>string</td><td><code>/data</code></td><td>Working directory for script execution (CWD)</td></tr>
+    </table>
+    <h4>Built-in Helpers</h4>
+    <table>
+      <tr><th>Name</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>input</code></td><td>Object</td><td>Output from the previous node, injected as a variable. Access keys directly: <code>input.filepath</code></td></tr>
+      <tr><td><code>output(data)</code></td><td>Function</td><td>Pass structured data to the next node. Equivalent to <code>console.log(JSON.stringify(data))</code></td></tr>
+    </table>
+    <h4>Example</h4>
+    <pre><code>async function main() {
+  const fs = require('fs');
+
+  // Access data from the previous node
+  console.log("Received:", input);
+
+  // Read files from mounted volume
+  const files = fs.readdirSync('.');
+
+  // Pass structured data to the next node
+  output({ files, count: files.length });
+}</code></pre>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">&#x1F510;</span>
+      <span class="plugin-name">SSH</span>
+      <span class="badge badge-purple">network</span>
+    </div>
+    <div class="plugin-file">api/plugins/ssh.js</div>
+    <div class="plugin-desc">Execute commands on a remote server via SSH.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>ssh_host</code></td><td>string</td><td>Server hostname or IP</td></tr>
+      <tr><td><code>ssh_username</code></td><td>string</td><td>SSH username</td></tr>
+      <tr><td><code>ssh_password</code></td><td>string</td><td>SSH password</td></tr>
+      <tr><td><code>ssh_cmd</code></td><td>string</td><td>Commands to run (comma-separated for multiple)</td></tr>
+    </table>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">&#x1F4E4;</span>
+      <span class="plugin-name">FTP</span>
+      <span class="badge badge-purple">network</span>
+    </div>
+    <div class="plugin-file">api/plugins/ftp.js</div>
+    <div class="plugin-desc">Upload files to an FTP server.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>host</code></td><td>string</td><td>FTP server hostname</td></tr>
+      <tr><td><code>username</code></td><td>string</td><td>FTP username</td></tr>
+      <tr><td><code>password</code></td><td>string</td><td>FTP password</td></tr>
+      <tr><td><code>local_file_path</code></td><td>string</td><td>Path to local file to upload</td></tr>
+      <tr><td><code>remote_folder_path</code></td><td>string</td><td>Remote destination folder (default: <code>/</code>)</td></tr>
+    </table>
+    <p><strong>Output:</strong> <code>{ size: "1.50 MB" }</code></p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">&#x1F4DD;</span>
+      <span class="plugin-name">Rename File</span>
+      <span class="badge badge-orange">io</span>
+    </div>
+    <div class="plugin-file">api/plugins/rename-file.js</div>
+    <div class="plugin-desc">Move or rename files on the filesystem. Creates destination directories if needed.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+      <tr><td><code>source_path</code></td><td>string</td><td>Current file path (also accepts from <code>input</code>)</td></tr>
+      <tr><td><code>dest_path</code></td><td>string</td><td>New file path (also accepts from <code>input</code>)</td></tr>
+    </table>
+    <p><strong>Output:</strong> <code>{ source_path, dest_path, filename }</code></p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">&#x1F31F;</span>
+      <span class="plugin-name">Example Plugin</span>
+      <span class="badge badge-green">example</span>
+    </div>
+    <div class="plugin-file">api/plugins/example.js</div>
+    <div class="plugin-desc">A template/demonstration plugin. Use as a starting point for creating new plugins.</div>
+    <p><strong>Output:</strong> <code>{ example: 0 }</code></p>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- CREATING A PLUGIN                           -->
+<!-- ════════════════════════════════════════════ -->
+<section id="plugin-dev">
+  <h2>Creating a Plugin</h2>
+
+  <p>To create a new plugin, add a <code>.js</code> file in <code>api/plugins/</code>. It will be auto-discovered on the next API restart.</p>
+
+  <h3>Step-by-step</h3>
+  <ol>
+    <li>Create a new file: <code>api/plugins/my-plugin.js</code></li>
+    <li>Extend the <code>Plugin</code> base class</li>
+    <li>Implement all required methods</li>
+    <li>Export the class</li>
+    <li>Restart the API &mdash; the plugin appears automatically</li>
+  </ol>
+
+  <h3>Template</h3>
+  <pre><code>const Plugin = require("./../src/models/plugin");
+
+class MyPlugin extends Plugin {
+  name()        { return "My Plugin"; }
+  description() { return "Describe what it does"; }
+  icon()        { return "&#x1F680;"; }
+  tags()        { return ["custom"]; }
+
+  paramsDefinition() {
+    return [
+      { name: "My Param", alias: "my_param", type: "string", default: "", value: undefined }
+    ];
+  }
+
+  async logic(params = {}) {
+    const myParam = params.my_param;
+    const previousOutput = params.input || {};
+
+    // Your logic here...
+    this.log("Processing...");
+
+    return {
+      status: { error: false, message: "Done" },
+      output: { result: "my output" }
+    };
+  }
+}
+
+module.exports = MyPlugin;</code></pre>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- DATA FLOW                                   -->
+<!-- ════════════════════════════════════════════ -->
+<section id="data-flow">
+  <h2>Data Flow Between Nodes</h2>
+
+  <p>When nodes are connected, the output of one node becomes the input of the next. The execution engine handles this automatically.</p>
+
+  <div class="flow">
+    <span class="flow-step">Node A executes</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">result.output stored</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Merged into params.input</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">{{variables}} resolved</span>
+    <span class="flow-arrow">&rarr;</span>
+    <span class="flow-step">Node B receives it</span>
+  </div>
+
+  <h3>Template Variables <code>{{variable}}</code></h3>
+
+  <p>Any node parameter can reference output from the previous node using <code>{{variable}}</code> syntax. The execution engine resolves these placeholders before the plugin runs.</p>
+
+  <div class="info-box tip">
+    <strong>Syntax:</strong> Use <code>{{key}}</code> in any parameter field. It will be replaced with the value of <code>key</code> from the previous node's output. If the key doesn't exist, the placeholder is left as-is.
+  </div>
+
+  <h4>Example: Custom Script &rarr; Rename File</h4>
+
+  <table>
+    <tr><th>Step</th><th>Node</th><th>Details</th></tr>
+    <tr>
+      <td><strong>1</strong></td>
+      <td>Custom Script</td>
+      <td>
+        Outputs: <code>{ filepath: "/data/report.txt", newpath: "/data/archive/report.txt" }</code>
+      </td>
+    </tr>
+    <tr>
+      <td><strong>2</strong></td>
+      <td>Rename File</td>
+      <td>
+        Source Path: <code>{{filepath}}</code> &rarr; resolved to <code>/data/report.txt</code><br>
+        Dest Path: <code>{{newpath}}</code> &rarr; resolved to <code>/data/archive/report.txt</code>
+      </td>
+    </tr>
+  </table>
+
+  <h4>How It Works Internally</h4>
+  <ol>
+    <li>Node A's <code>logic()</code> returns <code>{ status, output: { filepath: "...", newpath: "..." } }</code></li>
+    <li>The executer merges <code>output</code> into <code>params.input</code> for Node B</li>
+    <li>Before calling Node B's <code>logic()</code>, all string params are scanned for <code>{{key}}</code> patterns</li>
+    <li>Each <code>{{key}}</code> is replaced with the matching value from <code>params.input</code></li>
+    <li>Node B receives the resolved values in its params</li>
+  </ol>
+
+  <h4>Variable Resolution Rules</h4>
+  <table>
+    <tr><th>Input Value Type</th><th>Resolution</th></tr>
+    <tr><td>String, Number, Boolean</td><td>Converted to string directly</td></tr>
+    <tr><td>Object or Array</td><td>JSON stringified</td></tr>
+    <tr><td>Key not found</td><td>Placeholder left unchanged: <code>{{unknown}}</code></td></tr>
+  </table>
+
+  <h3>Accessing Input Programmatically</h3>
+
+  <h4>Built-in Plugins (SSH, FTP, Rename File)</h4>
+  <p>Two ways to receive data from previous nodes:</p>
+  <pre><code>// Option 1: Use {{variable}} in the parameter field in the UI
+// Source Path: {{filepath}}
+// The value is resolved before logic() is called
+
+// Option 2: Access params.input directly in plugin code
+async logic(params = {}) {
+  const filePath = params.source_path || params.input.filepath;
+}</code></pre>
+
+  <h4>Custom Script Plugin</h4>
+  <p>The <code>input</code> variable is injected automatically into the script scope:</p>
+  <pre><code>async function main() {
+  // `input` contains the output from the previous node
+  console.log("File:", input.filepath);   // "/data/report.txt"
+  console.log("Count:", input.count);     // 42
+
+  // Pass structured data to the next node
+  output({ processed: true, path: input.filepath });
+}</code></pre>
+
+  <h3>Full Chain Example</h3>
+  <pre><code>// ── Node 1: Custom Script ── "List files"
+async function main() {
+  const fs = require('fs');
+  const files = fs.readdirSync('.');
+  output({
+    source: "/data/" + files[0],
+    dest: "/data/archive/" + files[0]
+  });
+}
+// Output: { source: "/data/report.txt", dest: "/data/archive/report.txt" }
+
+
+// ── Node 2: Rename File ──
+// Source Path field:  {{source}}   →  resolves to "/data/report.txt"
+// Dest Path field:    {{dest}}     →  resolves to "/data/archive/report.txt"
+// Output: { source_path, dest_path, filename }
+
+
+// ── Node 3: Custom Script ── "Log result"
+async function main() {
+  console.log("Moved:", input.filename, "from", input.source_path);
+  output({ status: "done" });
+}</code></pre>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SCHEDULER                                   -->
+<!-- ════════════════════════════════════════════ -->
+<section id="scheduler">
+  <h2>Scheduler</h2>
+  <p>The scheduler is a background service that manages per-sheet cron jobs. It runs inside the Docker container alongside the API.</p>
+
+  <h3>How It Works</h3>
+  <ol>
+    <li>Starts with a 5-second delay (waits for API to be ready)</li>
+    <li>Every 30 seconds, syncs with the API:
+      <ul>
+        <li>Fetches all sheets via <code>/sheet/list-internal</code></li>
+        <li>Filters for active sheets with <code>trigger_type: "cron"</code></li>
+        <li>Creates new cron jobs for newly added sheets</li>
+        <li>Removes jobs for deleted or deactivated sheets</li>
+        <li>Updates jobs if the cron schedule changed</li>
+      </ul>
+    </li>
+    <li>Each cron job calls <code>/sheet/execute-batch</code> on its schedule</li>
+  </ol>
+
+  <div class="info-box note">
+    <strong>Note:</strong> The scheduler only processes sheets with <code>trigger_type: "cron"</code>. Webhook and terminal sheets are ignored.
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- CLI                                         -->
+<!-- ════════════════════════════════════════════ -->
+<section id="cli">
+  <h2>CLI Tool</h2>
+  <p>Execute sheets manually from the command line.</p>
+
+  <h3>Usage</h3>
+  <pre><code># From inside the container
+node cli.js &lt;sheet-uid&gt;
+
+# From host (via docker exec)
+docker exec node-connector node cli.js &lt;sheet-uid&gt;
+
+# From host (via curl)
+curl -X POST http://localhost/api/sheet/execute-batch \
+  -H "Content-Type: application/json" \
+  -H "X-Internal-Key: change_me_internal_key" \
+  -d '{"sheetUid":"&lt;sheet-uid&gt;"}'</code></pre>
+
+  <h3>Output</h3>
+  <pre><code>Sheet "My Workflow" executed successfully.
+
+Root: Start Node [success]
+  -> Custom Script: {"files":["a.txt","b.txt"]}
+  -> Rename File: {"source_path":"/data/a.txt","dest_path":"/data/archive/a.txt"}</code></pre>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- FRONTEND                                    -->
+<!-- ════════════════════════════════════════════ -->
+<section id="frontend">
+  <h2>Frontend</h2>
+  <p>The frontend is a React 19 single-page application built with Vite 6. It provides the visual workflow editor and sheet management interface.</p>
+
+  <h3>Routes</h3>
+  <table>
+    <tr><th>Path</th><th>Component</th><th>Access</th></tr>
+    <tr><td><code>/login</code></td><td>Login</td><td>Guest only</td></tr>
+    <tr><td><code>/register</code></td><td>Register</td><td>Guest only</td></tr>
+    <tr><td><code>/editor</code></td><td>Editor (sheet list)</td><td>Authenticated</td></tr>
+    <tr><td><code>/editor?id=uid</code></td><td>Editor (canvas)</td><td>Authenticated</td></tr>
+  </table>
+
+  <h3>Key Components</h3>
+  <table>
+    <tr><th>Component</th><th>Description</th></tr>
+    <tr><td><strong>ListComponent</strong></td><td>Displays sheets as cards with status badge, trigger summary, and settings gear button. Includes settings modal and create modal.</td></tr>
+    <tr><td><strong>SheetComponent</strong></td><td>SVG-based visual editor. Drag plugins from the palette, connect nodes, configure parameters, execute workflows. Supports zoom and pan.</td></tr>
+    <tr><td><strong>Plugin Palette</strong></td><td>Left sidebar listing all plugins, filterable by tag. Drag to canvas to add nodes.</td></tr>
+    <tr><td><strong>LogModal</strong></td><td>Displays real-time execution logs streamed via SSE.</td></tr>
+    <tr><td><strong>MessageBox</strong></td><td>Confirmation dialogs (e.g., delete node).</td></tr>
+  </table>
+
+  <h3>Sheet Editor Layout</h3>
+  <table>
+    <tr><th>Area</th><th>Position</th><th>Contents</th></tr>
+    <tr><td><strong>Left Toolbar</strong></td><td>Top-left</td><td><strong>Back</strong> button (return to sheet list) and <strong>Play All</strong> button (execute all root nodes with live progress)</td></tr>
+    <tr><td><strong>Right Toolbar</strong></td><td>Top-right</td><td>Grid toggle checkbox, zoom in (+) and zoom out (-) buttons</td></tr>
+    <tr><td><strong>Plugin Palette</strong></td><td>Left sidebar</td><td>Tag filter buttons and draggable plugin cards</td></tr>
+    <tr><td><strong>Canvas</strong></td><td>Center</td><td>SVG workspace with nodes, connections, pan and zoom</td></tr>
+  </table>
+
+  <div class="info-box tip">
+    <strong>Play All:</strong> Finds all root nodes (nodes with no inputs) and executes each chain in parallel. Progress is streamed live in the log modal &mdash; each node lights up yellow while executing, then green (success) or red (error).
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- DATABASE                                    -->
+<!-- ════════════════════════════════════════════ -->
+<section id="database">
+  <h2>Database Schema</h2>
+  <p>The application uses SQLite for metadata and JSON files for sheet node data.</p>
+
+  <h3>Users Table</h3>
+  <pre><code>CREATE TABLE users (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  username      TEXT UNIQUE NOT NULL,
+  password      TEXT NOT NULL,       -- bcrypt hashed
+  refreshToken  TEXT
+);</code></pre>
+
+  <h3>Sheets Table</h3>
+  <pre><code>CREATE TABLE sheets (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  name           TEXT,
+  uid            TEXT,                -- UUID
+  slug           TEXT,                -- URL-safe name
+  is_active      INTEGER DEFAULT 1,  -- 1 = active, 0 = inactive
+  trigger_type   TEXT DEFAULT 'cron', -- 'cron' | 'webhook' | 'terminal'
+  cron_schedule  TEXT DEFAULT '0 * * * *'
+);</code></pre>
+
+  <h3>Sheet JSON Files</h3>
+  <p>Stored at <code>api/sheets/{uid}.json</code>:</p>
+  <pre><code>{
+  "id": -1,
+  "uid": "uuid",
+  "name": "Sheet Name",
+  "slug": "sheet-name",
+  "data": {
+    "nodes": [
+      { "id": "...", "title": "...", "className": "...", "params": {...}, "inputs": [], "outputs": [] }
+    ]
+  }
+}</code></pre>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- ENV VARS                                    -->
+<!-- ════════════════════════════════════════════ -->
+<section id="env-vars">
+  <h2>Environment Variables</h2>
+
+  <table>
+    <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+    <tr><td><code>PORT</code></td><td><code>3001</code></td><td>API server port (internal)</td></tr>
+    <tr><td><code>DB_PATH</code></td><td><code>./db/sheets.db</code></td><td>SQLite database file path</td></tr>
+    <tr><td><code>JWT_SECRET</code></td><td><code>change_me_jwt_secret</code></td><td>Secret for signing JWT access tokens</td></tr>
+    <tr><td><code>REFRESH_TOKEN_SECRET</code></td><td><code>change_me_refresh_secret</code></td><td>Secret for signing refresh tokens</td></tr>
+    <tr><td><code>INTERNAL_API_KEY</code></td><td><code>change_me_internal_key</code></td><td>Key for scheduler/CLI to API communication</td></tr>
+    <tr><td><code>API_BASE_URL</code></td><td><code>http://127.0.0.1:3001</code></td><td>API URL used by scheduler</td></tr>
+    <tr><td><code>LOG_LEVEL</code></td><td><code>info</code></td><td>Logging verbosity</td></tr>
+  </table>
+
+  <div class="info-box warning">
+    <strong>Important:</strong> Change all default secrets before deploying to production. The defaults are only suitable for local development.
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECURITY                                    -->
+<!-- ════════════════════════════════════════════ -->
+<section id="security">
+  <h2>Security</h2>
+
+  <h3>Authentication</h3>
+  <ul>
+    <li><strong>Passwords</strong> &mdash; Hashed with bcrypt (10 rounds)</li>
+    <li><strong>Access Tokens</strong> &mdash; JWT with 15-minute expiry</li>
+    <li><strong>Refresh Tokens</strong> &mdash; Long-lived, stored in DB per user</li>
+    <li><strong>Internal Key</strong> &mdash; Separate auth for service-to-service calls</li>
+  </ul>
+
+  <h3>HTTP Security</h3>
+  <ul>
+    <li><strong>Helmet</strong> &mdash; Security headers (XSS protection, no sniff, etc.)</li>
+    <li><strong>CORS</strong> &mdash; Cross-origin requests enabled</li>
+    <li><strong>Nginx</strong> &mdash; Reverse proxy, no direct API exposure</li>
+  </ul>
+
+  <h3>Input Validation</h3>
+  <ul>
+    <li>Trigger type validated against allowed values</li>
+    <li>Cron schedule validated with <code>node-cron</code></li>
+    <li>Custom scripts validated for <code>async function main()</code> via Babel parser</li>
+    <li>Required fields checked on all mutation endpoints</li>
+  </ul>
+</section>
+
+</main>
+
+<!-- ── Smooth scroll for nav links ── -->
+<script>
+  document.querySelectorAll('nav a').forEach(link => {
+    link.addEventListener('click', e => {
+      document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+      link.classList.add('active');
+    });
+  });
+
+  // Highlight active nav on scroll
+  const sections = document.querySelectorAll('section[id]');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(section => {
+      const top = section.offsetTop - 100;
+      if (window.scrollY >= top) current = section.getAttribute('id');
+    });
+    document.querySelectorAll('nav a').forEach(a => {
+      a.classList.remove('active');
+      if (a.getAttribute('href') === '#' + current) a.classList.add('active');
+    });
+  }, { passive: true });
+</script>
+
+</body>
+</html>

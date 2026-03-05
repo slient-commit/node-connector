@@ -7,7 +7,8 @@ export default class Node {
     params = null,
     icon = "📁",
     numInputs = 1,
-    numOutputs = 1
+    numOutputs = 1,
+    iconBase64 = null
   ) {
     this.id = Math.random().toString(36).substr(2, 9);
     this.x = x;
@@ -16,6 +17,7 @@ export default class Node {
     this.params = params;
     this.title = title;
     this.icon = icon;
+    this.iconBase64 = iconBase64;
     this.radius = 40;
     this.numInputs = numInputs;
     this.numOutputs = numOutputs;
@@ -96,15 +98,26 @@ export default class Node {
     this.group.appendChild(this.circle);
 
     // Icon inside circle
-    this.iconText = this.createSVGElement("text", {
-      x: this.x,
-      y: this.y + 10,
-      "text-anchor": "middle",
-      "font-size": "24px",
-    });
-    this.iconText.textContent = this.icon;
-    this.iconText.setAttribute("class", "text-unselectable");
-    this.group.appendChild(this.iconText);
+    if (this.iconBase64) {
+      this.iconEl = this.createSVGElement("image", {
+        x: this.x - 20,
+        y: this.y - 20,
+        width: 40,
+        height: 40,
+        href: this.iconBase64,
+        class: "text-unselectable",
+      });
+    } else {
+      this.iconEl = this.createSVGElement("text", {
+        x: this.x,
+        y: this.y + 10,
+        "text-anchor": "middle",
+        "font-size": "24px",
+        class: "text-unselectable",
+      });
+      this.iconEl.textContent = this.icon;
+    }
+    this.group.appendChild(this.iconEl);
 
     // Create ports
     const portRadius = 7;
@@ -171,8 +184,13 @@ export default class Node {
     this.circle.setAttribute("cx", this.x);
     this.circle.setAttribute("cy", this.y);
 
-    this.iconText.setAttribute("x", this.x);
-    this.iconText.setAttribute("y", this.y + 10);
+    if (this.iconBase64) {
+      this.iconEl.setAttribute("x", this.x - 20);
+      this.iconEl.setAttribute("y", this.y - 20);
+    } else {
+      this.iconEl.setAttribute("x", this.x);
+      this.iconEl.setAttribute("y", this.y + 10);
+    }
 
     const portRadius = 7;
     const verticalSpacing = 25;

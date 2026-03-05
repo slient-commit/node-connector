@@ -66,6 +66,25 @@ class SQLiteManager {
     });
   }
 
+  async selectAllBy(table_name, column = undefined, orderBy = null, limit = null) {
+    return new Promise(async (resolve) => {
+      if (!column) resolve([]);
+      await this.openConnection().then((db) => {
+        if (!db) resolve([]);
+        let query = `SELECT * FROM ${table_name} WHERE ${column.name} = ?`;
+        if (orderBy) query += ` ORDER BY ${orderBy}`;
+        if (limit) query += ` LIMIT ${limit}`;
+        db.all(query, [column.value], (err, rows) => {
+          if (err) {
+            console.error("Database error:", err.message);
+          }
+          resolve(rows || []);
+          db.close();
+        });
+      });
+    });
+  }
+
   async insert(table_name, columns = []) {
     return new Promise(async (resolve) => {
       await this.openConnection().then((db) => {

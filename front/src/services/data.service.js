@@ -18,6 +18,10 @@ export default class DataService {
     return await this.api.get("/sheet/get?id=" + id);
   }
 
+  async getSheetHistory(uid) {
+    return await this.api.get("/sheet/history/" + uid);
+  }
+
   async createNewSheet(name) {
     return await this.api.post("/sheet/create", { name });
   }

@@ -108,6 +108,7 @@ export default class ListComponent extends Component {
 
   getSheetSummary(sheet) {
     if (sheet.trigger_type === "webhook") return "Webhook";
+    if (sheet.trigger_type === "terminal") return "Terminal";
     return this.getCronLabel(sheet.cron_schedule || "0 * * * *");
   }
 
@@ -218,6 +219,7 @@ export default class ListComponent extends Component {
                   >
                     <option value="cron">Cron (Scheduled)</option>
                     <option value="webhook">Webhook</option>
+                    <option value="terminal">Terminal (Manual)</option>
                   </select>
                 </div>
 
@@ -240,6 +242,15 @@ export default class ListComponent extends Component {
                 {settingsTriggerType === "webhook" && (
                   <div className="webhook-url">
                     POST /sheet/webhook/{this.state.settingsSheet?.uid}
+                  </div>
+                )}
+
+                {settingsTriggerType === "terminal" && (
+                  <div className="terminal-cmd">
+                    <label>Docker exec:</label>
+                    <code>docker exec node-connector node api/cli.js {this.state.settingsSheet?.uid}</code>
+                    <label>Or with curl:</label>
+                    <code>curl -X POST http://localhost/api/sheet/execute-batch -H "Content-Type: application/json" -H "X-Internal-Key: change_me_internal_key" -d "{'{'}\"sheetUid\":\"{this.state.settingsSheet?.uid}\"{'}'}"</code>
                   </div>
                 )}
 

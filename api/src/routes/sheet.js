@@ -5,6 +5,7 @@ const SQLiteManager = require("./../sqlite-manager");
 const SheetManager = require("../sheet-manager");
 const Node = require("../node");
 const Executer = require("../executer");
+const ExecutionHistory = require("../models/execution-history");
 
 // Protected route example
 router.get(
@@ -22,6 +23,8 @@ router.get(
         name: instance.name(),
         description: instance.description(),
         icon: instance.icon(),
+        iconBase64: instance.iconBase64(),
+        tags: instance.tags(),
         default_params: instance.paramsDefinition(),
       });
       // You could call methods here or check for specific ones
@@ -225,8 +228,8 @@ router.put(
     if (!uid) {
       return res.status(400).json({ message: "uid is required" });
     }
-    if (trigger_type !== undefined && !["cron", "webhook"].includes(trigger_type)) {
-      return res.status(400).json({ message: "trigger_type must be 'cron' or 'webhook'" });
+    if (trigger_type !== undefined && !["cron", "webhook", "terminal"].includes(trigger_type)) {
+      return res.status(400).json({ message: "trigger_type must be 'cron', 'webhook', or 'terminal'" });
     }
     if (is_active !== undefined && ![0, 1].includes(is_active)) {
       return res.status(400).json({ message: "is_active must be 0 or 1" });
@@ -244,6 +247,21 @@ router.put(
 
     await new SQLiteManager().update("sheets", columnsToUpdate, [{ name: "uid", value: uid }]);
     res.json({ message: "settings updated" });
+  }
+);
+
+// --- Execution history ---
+
+router.get(
+  "/history/:uid",
+  require("../middleware/authenticateToken"),
+  async (req, res) => {
+    const history = await ExecutionHistory.getBySheetUid(req.params.uid);
+    const parsed = history.map((row) => ({
+      ...row,
+      results_summary: row.results_summary ? JSON.parse(row.results_summary) : [],
+    }));
+    res.json(parsed);
   }
 );
 
@@ -266,6 +284,7 @@ router.post(
   require("../middleware/authenticateInternalKey"),
   async (req, res) => {
     const sheetUid = req.body.sheetUid;
+    const triggerType = req.body.triggerType || "terminal";
     if (!sheetUid) {
       return res.status(400).json({ message: "sheetUid is required" });
     }
@@ -291,6 +310,7 @@ router.post(
       return res.json({ message: "no root nodes found", results: [] });
     }
 
+    const startTime = Date.now();
     const store = sheets.getNodeStore(sheet);
     const results = [];
 
@@ -329,6 +349,22 @@ router.post(
       }
     }
 
+    const durationMs = Date.now() - startTime;
+    const errorCount = results.filter((r) => r.status === "error").length;
+    const overallStatus = errorCount === 0 ? "success" : errorCount === results.length ? "error" : "partial";
+
+    await ExecutionHistory.record({
+      sheetUid,
+      sheetName: sheet.name,
+      triggerType,
+      status: overallStatus,
+      startedAt: new Date(startTime).toISOString(),
+      durationMs,
+      nodeCount: results.reduce((sum, r) => sum + (r.nodes ? r.nodes.length : 0), 0),
+      errorCount,
+      resultsSummary: results,
+    });
+
     res.json({ sheetUid, sheetName: sheet.name, results });
   }
 );
@@ -366,6 +402,7 @@ router.post(
       return res.json({ message: "no root nodes found", results: [] });
     }
 
+    const startTime = Date.now();
     const store = sheets.getNodeStore(sheet);
     const results = [];
 
@@ -394,6 +431,22 @@ router.post(
         });
       }
     }
+
+    const durationMs = Date.now() - startTime;
+    const errorCount = results.filter((r) => r.status === "error").length;
+    const overallStatus = errorCount === 0 ? "success" : errorCount === results.length ? "error" : "partial";
+
+    await ExecutionHistory.record({
+      sheetUid,
+      sheetName: sheet.name,
+      triggerType: "webhook",
+      status: overallStatus,
+      startedAt: new Date(startTime).toISOString(),
+      durationMs,
+      nodeCount: results.reduce((sum, r) => sum + (r.nodes ? r.nodes.length : 0), 0),
+      errorCount,
+      resultsSummary: results,
+    });
 
     res.json({ sheetUid, sheetName: sheet.name, results });
   }

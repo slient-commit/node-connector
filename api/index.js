@@ -32,6 +32,7 @@ const ToolLoader = require("./src/tool-loader");
 const SheetManager = require("./src/sheet-manager");
 const Node = require("./src/node");
 const NodeExecuter = require("./src/node-executer");
+const ExecutionHistory = require("./src/models/execution-history");
 
 (async () => {
   dotenv.config();
@@ -47,6 +48,7 @@ const NodeExecuter = require("./src/node-executer");
   // Create table if not exists
   await User.createUserTable();
   await new SheetManager().createDbTable();
+  await ExecutionHistory.createTable();
 
   // Routes
   app.use("/auth", authRoutes);

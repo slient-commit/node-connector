@@ -1,0 +1,52 @@
+#!/usr/bin/env node
+
+const sheetUid = process.argv[2];
+
+if (!sheetUid) {
+  console.error("Usage: node cli.js <sheet-uid>");
+  process.exit(1);
+}
+
+const PORT = process.env.PORT || 3001;
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "change_me_internal_key";
+const BASE_URL = `http://localhost:${PORT}`;
+
+async function execute() {
+  try {
+    const res = await fetch(`${BASE_URL}/sheet/execute-batch`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Key": INTERNAL_API_KEY,
+      },
+      body: JSON.stringify({ sheetUid, triggerType: "terminal" }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error(`Error (${res.status}):`, data.message || data);
+      process.exit(1);
+    }
+
+    console.log(`Sheet "${data.sheetName}" executed successfully.\n`);
+
+    for (const root of data.results) {
+      console.log(`Root: ${root.rootNodeTitle} [${root.status}]`);
+      if (root.error) {
+        console.error(`  Error: ${root.error}`);
+      }
+      if (root.nodes) {
+        for (const node of root.nodes) {
+          console.log(`  -> ${node.title}:`, JSON.stringify(node.result));
+        }
+      }
+      console.log();
+    }
+  } catch (err) {
+    console.error("Failed to connect to API:", err.message);
+    process.exit(1);
+  }
+}
+
+execute();
