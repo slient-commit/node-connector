@@ -204,8 +204,9 @@ class Executer {
         if (sendProgress)
           sendProgress({
             id: node.id,
-            result: `Error while executing node: ${err.message}`,
+            result: {},
             error: true,
+            message: `Error while executing node: ${err.message}`,
             stage: "executed",
           });
       }

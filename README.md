@@ -32,7 +32,58 @@ A visual workflow automation platform. Build chains of executable plugins on an 
 
 ## Quick Start
 
-### Docker (recommended)
+### Without Docker (recommended)
+
+Run directly on your machine for full access to host tools (Python, CMD, bash, etc.).
+
+**Prerequisites:** [Node.js 18+](https://nodejs.org/) installed.
+
+```bash
+# Windows
+start.bat
+
+# Linux / macOS
+./start.sh
+```
+
+Or directly:
+```bash
+node start.js
+```
+
+This single command:
+1. Installs all dependencies (API, frontend, scheduler)
+2. Builds the frontend
+3. Starts the API + scheduler
+4. Opens on `http://localhost:3001`
+
+Terminal plugins have full access to your host machine — run Python, CMD, bash, and any installed tool.
+
+#### Auto-Start on Boot
+
+To have Node Connector start automatically when the system boots:
+
+```bash
+# Windows (run as Administrator)
+service-install.bat
+
+# Linux (run as root)
+sudo ./service-install.sh
+```
+
+To remove auto-start:
+
+```bash
+# Windows (run as Administrator)
+service-uninstall.bat
+
+# Linux (run as root)
+sudo ./service-uninstall.sh
+```
+
+### Docker
+
+Use Docker if you prefer an isolated container (note: host tools like Python won't be accessible).
 
 ```bash
 docker build -t node-connector .
@@ -41,9 +92,7 @@ docker run -d -p 80:80 --name node-connector node-connector
 
 Open `http://localhost` in your browser, register an account, and start building workflows.
 
-### With Host Volume
-
-Mount a host directory to `/data` so plugins can read/write files on your machine:
+**With host volume** (for file access only, not host tools):
 
 ```bash
 # Linux / macOS
@@ -52,14 +101,6 @@ docker run -d -p 80:80 --name node-connector -v /path/on/host:/data node-connect
 # Windows
 docker run -d -p 80:80 --name node-connector -v C:\Users\You\Desktop:/data node-connector
 ```
-
-### Windows Quick Script
-
-```batch
-run.bat
-```
-
-Stops existing containers, rebuilds the image, and starts fresh.
 
 ### Environment Variables
 
@@ -126,7 +167,13 @@ node-connector/
 ├── Dockerfile                  # Single-image build
 ├── nginx.conf                  # Reverse proxy config
 ├── docs.html                   # Full documentation
-└── run.bat                     # Windows build/run script
+├── start.js                    # Cross-platform launcher
+├── start.bat                   # Windows start wrapper
+├── start.sh                    # Linux/macOS start wrapper
+├── service-install.bat         # Windows auto-start installer
+├── service-uninstall.bat       # Windows auto-start uninstaller
+├── service-install.sh          # Linux auto-start installer (systemd)
+└── service-uninstall.sh        # Linux auto-start uninstaller
 ```
 
 ## Creating a Plugin

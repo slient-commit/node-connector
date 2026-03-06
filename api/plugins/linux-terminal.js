@@ -50,8 +50,8 @@ class LinuxTerminal extends Plugin {
   }
 
   async logic(params = {}) {
-    const command = params.command;
-    if (!command) {
+    const rawCommand = params.command;
+    if (!rawCommand) {
       return {
         status: { error: true, message: "Command is required" },
         output: {},
@@ -60,8 +60,15 @@ class LinuxTerminal extends Plugin {
 
     const isWindows = os.platform() === "win32";
     const cwd = params.working_directory || (isWindows ? process.cwd() : "/data");
-    const timeout = params.timeout || 30000;
+    const timeout = parseInt(params.timeout, 10) || 30000;
     const shell = isWindows ? true : "/bin/bash";
+
+    // Join multi-line commands with && so they run sequentially
+    const command = rawCommand
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+      .join(" && ");
 
     this.log("Executing: " + command);
 

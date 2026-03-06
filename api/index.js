@@ -20,6 +20,8 @@
 // })();
 
 const express = require("express");
+const path = require("path");
+const fs = require("fs");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -53,6 +55,15 @@ const ExecutionHistory = require("./src/models/execution-history");
   // Routes
   app.use("/auth", authRoutes);
   app.use("/sheet", sheetRoutes);
+
+  // Serve frontend static files if build exists (non-Docker mode)
+  const frontendPath = path.join(__dirname, "..", "front", "build");
+  if (fs.existsSync(frontendPath)) {
+    app.use(express.static(frontendPath));
+    app.get("{*path}", (req, res) => {
+      res.sendFile(path.join(frontendPath, "index.html"));
+    });
+  }
 
   // Start server
   app.listen(config.port, () => {

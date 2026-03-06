@@ -421,6 +421,7 @@
     <div class="nav-group-title">Getting Started</div>
     <a href="#overview">Overview</a>
     <a href="#architecture">Architecture</a>
+    <a href="#local-setup">Local Setup (no Docker)</a>
     <a href="#docker">Docker Deployment</a>
   </div>
 
@@ -563,11 +564,121 @@
 |       |   +-- messagebox/  # Confirmation dialogs
 |       +-- services/        # API clients
 |       +-- models/          # node.model.js (SVG node rendering)
++-- start.js                 # Cross-platform launcher (no Docker)
++-- start.bat                # Windows launcher shortcut
++-- start.sh                 # Linux/macOS launcher shortcut
++-- service-install.bat      # Windows auto-start installer
++-- service-uninstall.bat    # Windows auto-start uninstaller
++-- service-install.sh       # Linux auto-start installer (systemd)
++-- service-uninstall.sh     # Linux auto-start uninstaller
 +-- docs.html                # Documentation (this file)
 +-- Dockerfile               # Single-image build
 +-- entrypoint.sh            # Container startup
 +-- nginx.conf               # Reverse proxy config
-+-- run.bat                  # Windows build/run script</div>
++-- run.bat                  # Windows Docker build/run script</div>
+</section>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- LOCAL SETUP                                  -->
+<!-- ════════════════════════════════════════════ -->
+<section id="local-setup">
+  <h2>Local Setup (no Docker)</h2>
+  <p>Run Node Connector directly on your machine for full access to host tools (Python, CMD, bash, and any installed program). This is the recommended approach when you need terminal plugins to interact with your system.</p>
+
+  <h3>Prerequisites</h3>
+  <ul>
+    <li><a href="https://nodejs.org/">Node.js 18+</a> installed on your machine</li>
+  </ul>
+
+  <h3>One-Command Start</h3>
+  <pre><code># Windows — double-click start.bat or run:
+start.bat
+
+# Linux / macOS
+./start.sh
+
+# Or directly (any platform)
+node start.js</code></pre>
+
+  <p>The <code>start.js</code> launcher automatically:</p>
+  <ol>
+    <li>Installs dependencies for API, frontend, and scheduler (if <code>node_modules/</code> is missing)</li>
+    <li>Builds the frontend (if <code>front/build/</code> doesn't exist)</li>
+    <li>Writes <code>config.js</code> pointing the frontend to the API</li>
+    <li>Starts the API server (which also serves the frontend static files)</li>
+    <li>Starts the scheduler (after a 3-second delay for API readiness)</li>
+  </ol>
+
+  <div class="info-box tip">
+    <strong>Tip:</strong> Open <code>http://localhost:3001</code> in your browser once all services are running. Press <strong>Ctrl+C</strong> in the terminal to stop everything.
+  </div>
+
+  <h3>How It Works</h3>
+  <p>Without Docker, there is no Nginx. Instead, the Express API serves double duty &mdash; it handles both API routes (<code>/auth</code>, <code>/sheet</code>) and the frontend static files from <code>front/build/</code>. Everything runs on a single port.</p>
+
+  <div class="arch-diagram">
++---------------------------------------------+
+|               Host Machine                   |
+|                                              |
+|   +------------------+    +---------------+  |
+|   |   API (Express)  |    |   Scheduler   |  |
+|   |   :3001          |    |               |  |
+|   |   - API routes   |    |   node-cron   |  |
+|   |   - Static files |    +---------------+  |
+|   +------------------+                       |
+|          |                                   |
+|   +------+------+                            |
+|   |   SQLite    |   Full access to host:     |
+|   |   + JSON    |   Python, CMD, bash, etc.  |
+|   +-------------+                            |
++---------------------------------------------+
+       |
+   Port 3001 (HTTP)
+  </div>
+
+  <h3>Environment Variables</h3>
+  <p>Set these before running <code>start.js</code>, or use the defaults:</p>
+  <table>
+    <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+    <tr><td><code>PORT</code></td><td><code>3001</code></td><td>HTTP port for API + frontend</td></tr>
+    <tr><td><code>JWT_SECRET</code></td><td><code>change_me_jwt_secret</code></td><td>JWT signing secret</td></tr>
+    <tr><td><code>REFRESH_TOKEN_SECRET</code></td><td><code>change_me_refresh_secret</code></td><td>Refresh token secret</td></tr>
+    <tr><td><code>INTERNAL_API_KEY</code></td><td><code>change_me_internal_key</code></td><td>Scheduler/CLI to API key</td></tr>
+  </table>
+
+  <h3>Rebuilding the Frontend</h3>
+  <p>The frontend is only built once. To rebuild after frontend code changes:</p>
+  <pre><code># Delete the build folder and restart
+rm -rf front/build
+node start.js</code></pre>
+
+  <h3>Auto-Start on Boot</h3>
+  <p>To have Node Connector start automatically when the system boots, use the provided service scripts. They require elevated privileges.</p>
+
+  <h4>Windows (Task Scheduler)</h4>
+  <pre><code># Install — run as Administrator
+service-install.bat
+
+# Uninstall — run as Administrator
+service-uninstall.bat</code></pre>
+  <p>This creates a Windows Task Scheduler task named <code>NodeConnector</code> that runs <code>node start.js</code> at system startup under the SYSTEM account. To start immediately without rebooting:</p>
+  <pre><code>schtasks /run /tn "NodeConnector"</code></pre>
+
+  <h4>Linux (systemd)</h4>
+  <pre><code># Install
+sudo ./service-install.sh
+
+# Uninstall
+sudo ./service-uninstall.sh</code></pre>
+  <p>This creates a systemd service named <code>node-connector</code> that starts on boot with automatic restart on failure. Useful commands:</p>
+  <pre><code>sudo systemctl status node-connector     # Check status
+sudo systemctl stop node-connector       # Stop service
+sudo systemctl restart node-connector    # Restart service
+sudo journalctl -u node-connector -f     # View logs</code></pre>
+
+  <div class="info-box note">
+    <strong>Docker vs Local:</strong> Use Docker for isolated, reproducible deployments. Use local setup when you need plugins to access host-installed tools (Python, compilers, CLIs) or prefer a simpler development workflow.
+  </div>
 </section>
 
 <!-- ════════════════════════════════════════════ -->
