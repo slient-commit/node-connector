@@ -19,6 +19,7 @@ export default class SheetComponent extends Component {
       alertType: "info",
       showConfirmDelete: false,
       confirmDeleteNode: null,
+      showConfirmDeleteConnection: false,
       history: [],
       historyLoading: false,
       logs: [],
@@ -125,6 +126,24 @@ export default class SheetComponent extends Component {
     });
     this.gridPattern.appendChild(gridLineY);
 
+    // Drop shadow filter for node cards
+    const filter = this.createSVGElement("filter", {
+      id: "dropShadow",
+      x: "-10%",
+      y: "-10%",
+      width: "130%",
+      height: "130%",
+    });
+    const feDropShadow = this.createSVGElement("feDropShadow", {
+      dx: "0",
+      dy: "2",
+      stdDeviation: "3",
+      "flood-color": "#000000",
+      "flood-opacity": "0.12",
+    });
+    filter.appendChild(feDropShadow);
+    defs.appendChild(filter);
+
     // Grid background at SVG root level - always fills the screen
     this.gridBackground = this.createSVGElement("rect", {
       width: "100%",
@@ -218,17 +237,18 @@ export default class SheetComponent extends Component {
     const cx = parseFloat(port.getAttribute("cx"));
     const cy = parseFloat(port.getAttribute("cy"));
 
-    this.tempLine = this.createSVGElement("line", {
-      x1: cx,
-      y1: cy,
-      x2: cx,
-      y2: cy,
+    this.tempLine = this.createSVGElement("path", {
+      d: `M ${cx},${cy} C ${cx},${cy} ${cx},${cy} ${cx},${cy}`,
       stroke: "blue",
       "stroke-width": 2,
+      fill: "none",
       "pointer-events": "none",
     });
     this.viewport.appendChild(this.tempLine);
     this.draggingFrom = { node, type, index };
+    this._tempStartX = cx;
+    this._tempStartY = cy;
+    this._tempStartType = type;
     document.addEventListener("mousemove", this.drawTempLine);
     document.addEventListener("mouseup", this.endConnection);
   }
@@ -244,9 +264,19 @@ export default class SheetComponent extends Component {
     if (!this.tempLine) return;
 
     const svgPoint = this.screenToSVG(e.clientX, e.clientY);
+    const x1 = this._tempStartX;
+    const y1 = this._tempStartY;
+    const x2 = svgPoint.x;
+    const y2 = svgPoint.y;
+    const dx = Math.max(Math.abs(x2 - x1) * 0.5, 50);
 
-    this.tempLine.setAttribute("x2", svgPoint.x);
-    this.tempLine.setAttribute("y2", svgPoint.y);
+    let d;
+    if (this._tempStartType === "output") {
+      d = `M ${x1},${y1} C ${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}`;
+    } else {
+      d = `M ${x1},${y1} C ${x1 - dx},${y1} ${x2 + dx},${y2} ${x2},${y2}`;
+    }
+    this.tempLine.setAttribute("d", d);
   }
 
   async endConnection(e) {
@@ -356,36 +386,34 @@ export default class SheetComponent extends Component {
     let x2 = parseFloat(toPort.getAttribute("cx"));
     let y2 = parseFloat(toPort.getAttribute("cy"));
 
-    let line = this.createSVGElement("line", {
-      x1,
-      y1,
-      x2,
-      y2,
+    const dx = Math.max(Math.abs(x2 - x1) * 0.5, 50);
+    const d = `M ${x1},${y1} C ${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}`;
+
+    let path = this.createSVGElement("path", {
+      d,
       class: "connection",
+      fill: "none",
+      "data-from-port": fromPort.getAttribute("data-port"),
+      "data-to-port": toPort.getAttribute("data-port"),
     });
 
     // Prevent duplicates
-    Array.from(this.viewport.querySelectorAll("line")).forEach((l) => {
-      if (
-        l.getAttribute("x1") === x1.toString() &&
-        l.getAttribute("y1") === y1.toString() &&
-        l.getAttribute("x2") === x2.toString() &&
-        l.getAttribute("y2") === y2.toString()
-      ) {
-        this.viewport.removeChild(l);
+    Array.from(this.viewport.querySelectorAll("path.connection")).forEach((p) => {
+      if (p.getAttribute("d") === d) {
+        this.viewport.removeChild(p);
       }
     });
 
-    this.viewport.appendChild(line);
+    this.viewport.appendChild(path);
 
-    return line;
+    return path;
   }
 
   reDrawAllConnections() {
     // Redraw all connections
-    const lines = this.viewport.querySelectorAll("line.connection");
-    lines.forEach((line) => {
-      this.viewport.removeChild(line);
+    const paths = this.viewport.querySelectorAll("path.connection");
+    paths.forEach((path) => {
+      this.viewport.removeChild(path);
     });
     this.nodes.forEach((node) => {
       node.connections.forEach((conn) => {
@@ -491,7 +519,8 @@ export default class SheetComponent extends Component {
         palette.icon,
         1,
         1,
-        palette.iconBase64
+        palette.iconBase64,
+        palette.tags
       );
 
       _node.inputs = node.inputs;
@@ -547,7 +576,8 @@ export default class SheetComponent extends Component {
       palette.icon,
       data.inputs,
       data.outputs,
-      palette.iconBase64
+      palette.iconBase64,
+      palette.tags
     );
 
     let _continue = false;
@@ -641,15 +671,91 @@ export default class SheetComponent extends Component {
   }
 
   rightClickRemoveEvent(e) {
-    const target = e.target;
-    if (target.classList.contains("node")) {
+    // Check for connection path
+    if (e.target.classList && e.target.classList.contains("connection")) {
       e.preventDefault();
-      const node = target.__node__;
-      if (node) {
-        this.setState({ showConfirmDelete: true, confirmDeleteNode: node });
+      this.connectionToDelete = e.target;
+      this.setState({ showConfirmDeleteConnection: true });
+      return;
+    }
+
+    // Check for node
+    let el = e.target;
+    while (el && el !== this.viewport) {
+      if (el.classList && el.classList.contains("node")) {
+        e.preventDefault();
+        const node = el.__node__;
+        if (node) {
+          this.setState({ showConfirmDelete: true, confirmDeleteNode: node });
+        }
+        return;
       }
+      el = el.parentElement;
     }
   }
+
+  handleConfirmDeleteConnectionYes = async () => {
+    const pathEl = this.connectionToDelete;
+    if (!pathEl) return;
+
+    const fromPortId = pathEl.getAttribute("data-from-port");
+    const toPortId = pathEl.getAttribute("data-to-port");
+
+    if (fromPortId && toPortId) {
+      const [fromNodeId] = fromPortId.split("_");
+      const [toNodeId] = toPortId.split("_");
+
+      const fromNode = this.nodes.find((n) => n.id === fromNodeId);
+      const toNode = this.nodes.find((n) => n.id === toNodeId);
+
+      if (fromNode && toNode) {
+        // Remove from outputs/inputs arrays
+        fromNode.outputs = fromNode.outputs.filter((id) => id !== toNodeId);
+        toNode.inputs = toNode.inputs.filter((id) => id !== fromNodeId);
+
+        // Remove from connections arrays
+        const fromPort = this.viewport.querySelector(`[data-port='${fromPortId}']`);
+        const toPort = this.viewport.querySelector(`[data-port='${toPortId}']`);
+        fromNode.connections = fromNode.connections.filter(
+          (c) => c.fromPort !== fromPort || c.toPort !== toPort
+        );
+        toNode.connections = toNode.connections.filter(
+          (c) => c.fromPort !== fromPort || c.toPort !== toPort
+        );
+
+        // Update backend
+        await this.api.updateNewNode(this.sheet.uid, {
+          id: fromNode.id,
+          outputs: fromNode.outputs,
+          inputs: fromNode.inputs,
+          position: { x: fromNode.x, y: fromNode.y },
+          title: fromNode.title,
+          params: fromNode.params,
+        });
+        await this.api.updateNewNode(this.sheet.uid, {
+          id: toNode.id,
+          outputs: toNode.outputs,
+          inputs: toNode.inputs,
+          position: { x: toNode.x, y: toNode.y },
+          title: toNode.title,
+          params: toNode.params,
+        });
+      }
+    }
+
+    // Remove the SVG path
+    if (this.viewport.contains(pathEl)) {
+      this.viewport.removeChild(pathEl);
+    }
+
+    this.connectionToDelete = null;
+    this.setState({ showConfirmDeleteConnection: false });
+  };
+
+  handleConfirmDeleteConnectionNo = () => {
+    this.connectionToDelete = null;
+    this.setState({ showConfirmDeleteConnection: false });
+  };
 
   events() {
     // Mouse events for dragging
@@ -889,16 +995,17 @@ export default class SheetComponent extends Component {
             this.setState((prevState) => ({
               logs: [...prevState.logs, `${node.title}: ${update.message}`], // Append new log entry to the list
             }));
-            const circle = node.group.getElementsByTagName("circle")[0];
-            if (update.stage === "executing") {
-              circle.setAttribute("stroke", "#dfd113");
-            } else if (update.stage.trim() === "executed") {
-              setTimeout(() => {
-                let color = "#27d827"; // green = success
-                if (update.conditionNotMet) color = "#999"; // gray = condition not met
-                else if (update.error) color = "#9e2121"; // red = error
-                circle.setAttribute("stroke", color);
-              }, 10);
+            if (node.statusElement) {
+              if (update.stage === "executing") {
+                node.statusElement.setAttribute("fill", "#dfd113");
+              } else if (update.stage.trim() === "executed") {
+                setTimeout(() => {
+                  let color = "#27d827"; // green = success
+                  if (update.conditionNotMet) color = "#999"; // gray = condition not met
+                  else if (update.error) color = "#9e2121"; // red = error
+                  node.statusElement.setAttribute("fill", color);
+                }, 10);
+              }
             }
           }
         }
@@ -923,16 +1030,17 @@ export default class SheetComponent extends Component {
         this.setState((prevState) => ({
           logs: [...prevState.logs, `${node.title}: ${update.message}`],
         }));
-        const circle = node.group.getElementsByTagName("circle")[0];
-        if (update.stage === "executing") {
-          circle.setAttribute("stroke", "#dfd113");
-        } else if (update.stage.trim() === "executed") {
-          setTimeout(() => {
-            let color = "#27d827"; // green = success
-            if (update.conditionNotMet) color = "#999"; // gray = condition not met
-            else if (update.error) color = "#9e2121"; // red = error
-            circle.setAttribute("stroke", color);
-          }, 10);
+        if (node.statusElement) {
+          if (update.stage === "executing") {
+            node.statusElement.setAttribute("fill", "#dfd113");
+          } else if (update.stage.trim() === "executed") {
+            setTimeout(() => {
+              let color = "#27d827"; // green = success
+              if (update.conditionNotMet) color = "#999"; // gray = condition not met
+              else if (update.error) color = "#9e2121"; // red = error
+              node.statusElement.setAttribute("fill", color);
+            }, 10);
+          }
         }
       }
     };
@@ -1123,6 +1231,18 @@ export default class SheetComponent extends Component {
               { label: "Cancel", onClick: this.handleConfirmDeleteNo, variant: "default" },
             ]}
             onClose={this.handleConfirmDeleteNo}
+          />
+        )}
+
+        {this.state.showConfirmDeleteConnection && (
+          <MessageBox
+            message="Remove this connection?"
+            type="warning"
+            buttons={[
+              { label: "Remove", onClick: this.handleConfirmDeleteConnectionYes, variant: "danger" },
+              { label: "Cancel", onClick: this.handleConfirmDeleteConnectionNo, variant: "default" },
+            ]}
+            onClose={this.handleConfirmDeleteConnectionNo}
           />
         )}
       </div>
