@@ -1,0 +1,3 @@
+theme: jekyll-theme-cayman
+title: Node Connector
+description: A visual workflow automation platform. Build chains of executable plugins, trigger them via cron, webhook, or terminal, and monitor execution in real-time.
