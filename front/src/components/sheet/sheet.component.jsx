@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import Node from "./../../models/node.model";
 import DataService from "./../../services/data.service";
+import AuthService from "./../../services/auth.service";
 import MessageBox from "./../messagebox/messagebox.component";
 import "./sheet.css";
 import LogModal from "../log-modal/log-modal.component";
@@ -35,6 +36,7 @@ export default class SheetComponent extends Component {
     this.editedNode = null;
     this.tempLine = null;
     this.api = new DataService();
+    this.auth = new AuthService();
     this.draggingFrom = null;
     this.drawTempLine = this.drawTempLine.bind(this);
     this.endConnection = this.endConnection.bind(this);
@@ -186,6 +188,24 @@ export default class SheetComponent extends Component {
     this.showSheetNodes();
   }
 
+  // BFS: check if targetNode can already reach sourceNode via outputs.
+  // If so, adding sourceNode→targetNode would create a cycle.
+  wouldCreateCycle(sourceNodeId, targetNodeId) {
+    const visited = new Set();
+    const queue = [targetNodeId];
+    while (queue.length > 0) {
+      const id = queue.shift();
+      if (id === sourceNodeId) return true;
+      if (visited.has(id)) continue;
+      visited.add(id);
+      const node = this.nodes.find((n) => n.id === id);
+      if (node && node.outputs) {
+        queue.push(...node.outputs);
+      }
+    }
+    return false;
+  }
+
   startConnection(node, type, index) {
     if (this.tempLine) this.viewport.removeChild(this.tempLine);
     const port =
@@ -240,7 +260,17 @@ export default class SheetComponent extends Component {
       const toId = target.getAttribute("data-port");
       const [toNodeId, toType, toIndex] = toId.split("_");
       const toNode = this.nodes.find((x) => x.id === toNodeId);
-      if (
+
+      // Determine the actual source and target for cycle detection
+      const sourceNode = fromType === "output" ? fromNode : toNode;
+      const targetNode = fromType === "output" ? toNode : fromNode;
+
+      // Prevent connecting a node to itself
+      if (sourceNode.id === targetNode.id) {
+        // silently reject
+      } else if (this.wouldCreateCycle(sourceNode.id, targetNode.id)) {
+        alert("Cannot connect: this would create a circular dependency.");
+      } else if (
         (fromType === "output" && toType === "input") ||
         (fromType === "input" && toType === "output")
       ) {
@@ -723,6 +753,37 @@ export default class SheetComponent extends Component {
           : param.default
           ? param.default
           : 0;
+      } else if (param.type === "select") {
+        input = document.createElement("select");
+        input.className = "node-modal-input";
+        input.id = param.alias;
+        input.name = param.alias;
+        const currentVal = param.value !== undefined ? param.value : (param.default || "");
+        (param.options || []).forEach(opt => {
+          const option = document.createElement("option");
+          option.value = opt.value;
+          option.textContent = opt.label;
+          if (opt.value === currentVal) option.selected = true;
+          input.appendChild(option);
+        });
+      } else if (param.type === "radio") {
+        input = document.createElement("div");
+        input.className = "node-modal-radio-group";
+        const currentVal = param.value !== undefined ? param.value : (param.default || "");
+        (param.options || []).forEach(opt => {
+          const wrapper = document.createElement("label");
+          wrapper.className = "node-modal-radio-label";
+          const radio = document.createElement("input");
+          radio.type = "radio";
+          radio.name = param.alias;
+          radio.value = opt.value;
+          radio.id = param.alias;
+          radio.className = "node-modal-radio";
+          if (opt.value === currentVal) radio.checked = true;
+          wrapper.appendChild(radio);
+          wrapper.appendChild(document.createTextNode(opt.label));
+          input.appendChild(wrapper);
+        });
       } else {
         input.type = "text";
         input.value = param.value
@@ -828,8 +889,7 @@ export default class SheetComponent extends Component {
 
       const modal = document.getElementById("node-modal");
       if (modal) modal.style.display = "none";
-      this.setState({ showMessage: false });
-      this.setState({ showLogModal: true });
+      this.setState({ showMessage: false, logs: [], showLogModal: true });
     }
   }
 
@@ -899,6 +959,9 @@ export default class SheetComponent extends Component {
           </label>
           <button className="zoom-btn" onClick={() => this.applyZoom(this.scale + 0.1)}>+</button>
           <button className="zoom-btn" onClick={() => this.applyZoom(this.scale - 0.1)}>-</button>
+          <button className="toolbar-btn logout-btn" onClick={() => { this.auth.logout(); window.location.href = "/login"; }} title="Logout">
+            <i className="fa-solid fa-right-from-bracket"></i> Logout
+          </button>
         </div>
 
         <div id="palette">

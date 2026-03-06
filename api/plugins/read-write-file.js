@@ -25,7 +25,9 @@ class ReadWriteFile extends Plugin {
 
   paramsDefinition() {
     return [
-      { name: "Operation", alias: "operation", type: "string", default: "read", value: undefined },
+      { name: "Operation", alias: "operation", type: "select", default: "read", options: [
+        {label: "Read", value: "read"}, {label: "Write", value: "write"}, {label: "Append", value: "append"}
+      ], value: undefined },
       { name: "File Path", alias: "file_path", type: "string", default: "", value: undefined },
       { name: "Content", alias: "content", type: "big_string", default: "", value: undefined },
       { name: "Encoding", alias: "encoding", type: "string", default: "utf-8", value: undefined },

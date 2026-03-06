@@ -55,6 +55,34 @@ router.post("/refresh-token", async (req, res) => {
   });
 });
 
+// Verify token validity and user existence
+router.get("/verify", require("../middleware/authenticateToken"), async (req, res) => {
+  const user = await User.getUserById(req.user.id);
+  if (!user) return res.sendStatus(401);
+  res.json({ valid: true });
+});
+
+// Change password
+router.put("/change-password", require("../middleware/authenticateToken"), async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: "Current password and new password are required" });
+  }
+  try {
+    const user = await User.getUserById(req.user.id);
+    if (!user) return res.sendStatus(404);
+
+    const validPass = await bcrypt.compare(currentPassword, user.password);
+    if (!validPass) return res.status(400).json({ error: "Current password is incorrect" });
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await User.updatePassword(user.id, hashed);
+    res.json({ message: "Password updated" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Protected route example
 router.get("/profile", require("../middleware/authenticateToken"), async (req, res) => {
   const user = await User.getUserById(req.user.id);

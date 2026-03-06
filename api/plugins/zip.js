@@ -24,7 +24,9 @@ class Zip extends Plugin {
 
   paramsDefinition() {
     return [
-      { name: "Operation", alias: "operation", type: "string", default: "zip", value: undefined },
+      { name: "Operation", alias: "operation", type: "radio", default: "zip", options: [
+        {label: "Zip", value: "zip"}, {label: "Unzip", value: "unzip"}
+      ], value: undefined },
       { name: "Source Path", alias: "source", type: "string", default: "", value: undefined },
       { name: "Destination Path", alias: "destination", type: "string", default: "", value: undefined },
     ];

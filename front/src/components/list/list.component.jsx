@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import "./list.css";
 import DataService from "./../../services/data.service";
+import AuthService from "./../../services/auth.service";
 
 const CRON_OPTIONS = [
   { label: "Every 15 seconds", value: "*/15 * * * * *" },
@@ -23,6 +24,7 @@ export default class ListComponent extends Component {
   constructor() {
     super();
     this.api = new DataService();
+    this.auth = new AuthService();
     this.state = {
       sheets: [],
       createName: "",
@@ -34,6 +36,12 @@ export default class ListComponent extends Component {
       settingsTriggerType: "cron",
       settingsCronSchedule: "0 * * * *",
       settingsIsActive: 1,
+      showProfileModal: false,
+      profileCurrentPassword: "",
+      profileNewPassword: "",
+      profileConfirmPassword: "",
+      profileError: "",
+      profileSuccess: "",
     };
   }
 
@@ -101,6 +109,51 @@ export default class ListComponent extends Component {
     this.loadSheets();
   };
 
+  // --- Profile modal ---
+  openProfileModal = () => {
+    this.setState({
+      showProfileModal: true,
+      profileCurrentPassword: "",
+      profileNewPassword: "",
+      profileConfirmPassword: "",
+      profileError: "",
+      profileSuccess: "",
+    });
+  };
+
+  closeProfileModal = () => {
+    this.setState({ showProfileModal: false });
+  };
+
+  handleChangePassword = async (e) => {
+    e.preventDefault();
+    const { profileCurrentPassword, profileNewPassword, profileConfirmPassword } = this.state;
+    if (profileNewPassword !== profileConfirmPassword) {
+      this.setState({ profileError: "New passwords do not match", profileSuccess: "" });
+      return;
+    }
+    if (profileNewPassword.length < 4) {
+      this.setState({ profileError: "New password must be at least 4 characters", profileSuccess: "" });
+      return;
+    }
+    try {
+      const res = await this.auth.changePassword(profileCurrentPassword, profileNewPassword);
+      if (res.ok) {
+        this.setState({ profileError: "", profileSuccess: "Password updated successfully" });
+      } else {
+        const data = await res.json();
+        this.setState({ profileError: data.error || "Failed to change password", profileSuccess: "" });
+      }
+    } catch {
+      this.setState({ profileError: "Failed to change password", profileSuccess: "" });
+    }
+  };
+
+  handleLogout = () => {
+    this.auth.logout();
+    window.location.href = "/login";
+  };
+
   getCronLabel(value) {
     const opt = CRON_OPTIONS.find((o) => o.value === value);
     return opt ? opt.label : value;
@@ -117,15 +170,24 @@ export default class ListComponent extends Component {
       sheets,
       showCreateModal, createName, createError,
       showSettingsModal, settingsName, settingsTriggerType, settingsCronSchedule, settingsIsActive,
+      showProfileModal, profileCurrentPassword, profileNewPassword, profileConfirmPassword, profileError, profileSuccess,
     } = this.state;
 
     return (
       <div className="list-container">
         <div className="list-header">
           <h1>My Sheets</h1>
-          <button className="create-btn" onClick={this.openCreateModal}>
-            + Create New
-          </button>
+          <div className="list-header-actions">
+            <button className="create-btn" onClick={this.openCreateModal}>
+              + Create New
+            </button>
+            <button className="header-btn profile-btn" onClick={this.openProfileModal} title="Profile Settings">
+              &#9881;
+            </button>
+            <button className="header-btn logout-btn" onClick={this.handleLogout} title="Logout">
+              &#x2192;
+            </button>
+          </div>
         </div>
 
         <div className="sheet-cards">
@@ -258,6 +320,49 @@ export default class ListComponent extends Component {
                   Save
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+        {/* Profile Modal */}
+        {showProfileModal && (
+          <div className="modal" style={{ display: "flex" }}>
+            <div className="modal-content">
+              <span className="close" onClick={this.closeProfileModal}>&times;</span>
+              <h2>Profile Settings</h2>
+              <form onSubmit={this.handleChangePassword}>
+                <div className="settings-form">
+                  <div className="settings-field">
+                    <label>Current Password:</label>
+                    <input
+                      type="password"
+                      value={profileCurrentPassword}
+                      onChange={(e) => this.setState({ profileCurrentPassword: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="settings-field">
+                    <label>New Password:</label>
+                    <input
+                      type="password"
+                      value={profileNewPassword}
+                      onChange={(e) => this.setState({ profileNewPassword: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="settings-field">
+                    <label>Confirm New Password:</label>
+                    <input
+                      type="password"
+                      value={profileConfirmPassword}
+                      onChange={(e) => this.setState({ profileConfirmPassword: e.target.value })}
+                      required
+                    />
+                  </div>
+                  {profileError && <p className="error-message">{profileError}</p>}
+                  {profileSuccess && <p className="success-message">{profileSuccess}</p>}
+                  <button type="submit" className="submit-btn">Change Password</button>
+                </div>
+              </form>
             </div>
           </div>
         )}

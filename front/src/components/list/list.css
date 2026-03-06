@@ -22,6 +22,38 @@
   font-size: 24px;
 }
 
+.list-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-btn {
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 16px;
+  cursor: pointer;
+  color: #666;
+  transition: background 0.2s, color 0.2s;
+}
+
+.header-btn:hover {
+  background: #e9ecef;
+  color: #333;
+}
+
+.header-btn.logout-btn {
+  color: #dc3545;
+  border-color: #dc3545;
+}
+
+.header-btn.logout-btn:hover {
+  background: #dc3545;
+  color: #fff;
+}
+
 .create-btn {
   background: #28a745;
   color: #fff;
@@ -230,6 +262,22 @@
   font-weight: 600;
   color: #555;
   margin-bottom: 4px;
+}
+
+.success-message {
+  color: #28a745;
+  font-size: 13px;
+  margin: 0 0 10px;
+}
+
+.settings-field input[type="password"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+  box-sizing: border-box;
+  background: #fff;
 }
 
 .settings-field input[type="text"],

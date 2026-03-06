@@ -24,7 +24,12 @@ class IfCondition extends Plugin {
   paramsDefinition() {
     return [
       { name: "Value", alias: "value", type: "string", default: "", value: undefined },
-      { name: "Operator", alias: "operator", type: "string", default: "equals", value: undefined },
+      { name: "Operator", alias: "operator", type: "select", default: "equals", options: [
+        {label: "Equals", value: "equals"}, {label: "Not Equals", value: "not_equals"},
+        {label: "Contains", value: "contains"}, {label: "Not Contains", value: "not_contains"},
+        {label: "Greater Than", value: "greater_than"}, {label: "Less Than", value: "less_than"},
+        {label: "Is Empty", value: "is_empty"}, {label: "Is Not Empty", value: "is_not_empty"}
+      ], value: undefined },
       { name: "Compare To", alias: "compare_to", type: "string", default: "", value: undefined },
     ];
   }

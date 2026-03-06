@@ -24,7 +24,11 @@ class HttpRequest extends Plugin {
   paramsDefinition() {
     return [
       { name: "URL", alias: "url", type: "string", default: "https://httpbin.org/get", value: undefined },
-      { name: "Method", alias: "method", type: "string", default: "GET", value: undefined },
+      { name: "Method", alias: "method", type: "select", default: "GET", options: [
+        {label: "GET", value: "GET"}, {label: "POST", value: "POST"},
+        {label: "PUT", value: "PUT"}, {label: "DELETE", value: "DELETE"},
+        {label: "PATCH", value: "PATCH"}
+      ], value: undefined },
       { name: "Headers (JSON)", alias: "headers", type: "big_string", default: '{"Content-Type": "application/json"}', value: undefined },
       { name: "Body", alias: "body", type: "big_string", default: "", value: undefined },
       { name: "Timeout (ms)", alias: "timeout", type: "number", default: 30000, value: undefined },

@@ -35,6 +35,20 @@ class AuthService {
     return !this.isJwtExpired(token);
   }
 
+  async changePassword(currentPassword, newPassword) {
+    const res = await this.api.put("/auth/change-password", { currentPassword, newPassword });
+    return res;
+  }
+
+  async verify() {
+    try {
+      const res = await this.api.get("/auth/verify");
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
   isJwtExpired(token) {
     try {
       // Decode the token payload (base64url)

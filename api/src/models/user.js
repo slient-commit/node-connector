@@ -76,6 +76,14 @@ class User {
     );
   }
 
+  static async updatePassword(userId, hashedPassword) {
+    await new SQLiteManager().update(
+      "users",
+      [{ name: "password", value: hashedPassword }],
+      [{ name: "id", value: userId }]
+    );
+  }
+
   static async getUserByRefreshToken(token) {
     let value = null;
     await new SQLiteManager()
