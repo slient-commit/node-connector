@@ -44,6 +44,7 @@ class FTPTool extends Plugin {
         name: "Password",
         alias: "password",
         type: "string",
+        secret: true,
         default: undefined,
         value: undefined,
       },

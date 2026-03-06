@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import AuthService from "../../../services/auth.service";
+import { validatePassword } from "../../../utils/validate-password";
 import "./register.css";
 
 export default class RegisterComponent extends Component {
@@ -21,10 +22,17 @@ export default class RegisterComponent extends Component {
   handleSubmit = async (e) => {
     e.preventDefault();
     const { username, password, confirm_password } = this.state;
+    if (username.trim().length < 3) {
+      this.setState({ error: "Username must be at least 3 characters" });
+      return;
+    }
+    const pwCheck = validatePassword(password);
+    if (!pwCheck.valid) {
+      this.setState({ error: pwCheck.error });
+      return;
+    }
     if (password !== confirm_password) {
-      this.setState({
-        error: "The confirmed password is not the same as the password",
-      });
+      this.setState({ error: "The confirmed password is not the same as the password" });
       return;
     }
     try {

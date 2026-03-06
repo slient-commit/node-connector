@@ -1,4 +1,5 @@
 const Plugin = require("./../src/models/plugin");
+const { safePath } = require("./../src/safe-path");
 
 class DatabaseQuery extends Plugin {
   name() {
@@ -55,9 +56,11 @@ class DatabaseQuery extends Plugin {
     }
 
     try {
-      const db = new Database(params.db_path);
+      const dbPath = safePath(params.db_path);
       const query = params.query.trim();
       const isSelect = /^\s*(SELECT|PRAGMA|EXPLAIN)/i.test(query);
+
+      const db = new Database(dbPath, { readonly: isSelect });
 
       this.log(`Executing: ${query}`);
 

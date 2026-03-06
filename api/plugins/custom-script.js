@@ -1,8 +1,38 @@
 const Plugin = require("./../src/models/plugin");
+const crypto = require("crypto");
 const fs = require("fs");
-const { exec } = require("child_process");
+const os = require("os");
+const { execFile } = require("child_process");
 const path = require("path");
 const parser = require("@babel/parser");
+
+const EXECUTION_TIMEOUT = 30000; // 30 seconds
+
+// Modules blocked inside custom scripts to prevent process spawning and network access
+const BLOCKED_MODULES = [
+  "child_process", "cluster", "worker_threads",
+  "net", "dgram", "tls", "http", "http2", "https", "dns",
+];
+
+// Build a require guard injected at the top of every script
+const REQUIRE_GUARD = `
+const _origRequire = require;
+const _blocked = new Set(${JSON.stringify(BLOCKED_MODULES)});
+require = function(mod) {
+  if (_blocked.has(mod)) throw new Error('Module "' + mod + '" is not allowed in custom scripts');
+  return _origRequire(mod);
+};
+`;
+
+// Minimal environment for the child process (strip secrets)
+function getSafeEnv() {
+  return {
+    PATH: process.env.PATH || "",
+    HOME: process.env.HOME || process.env.USERPROFILE || "",
+    TMPDIR: process.env.TMPDIR || os.tmpdir(),
+    NODE_ENV: process.env.NODE_ENV || "development",
+  };
+}
 
 class CustomScript extends Plugin {
   description() {
@@ -78,27 +108,29 @@ class CustomScript extends Plugin {
     }
     const cwd = params.working_directory || "/data";
     const input = params.input || {};
-    let result = await new Promise(async (resolve) => {
+    let result = await new Promise((resolve) => {
       let _result = {};
-      // Create a temporary file name
-      const tempFileName = `temp_script_${Date.now()}.js`;
-      const tempFilePath = path.join("/tmp", tempFileName);
-      // Inject input data so the script can access previous node results via `input`
-      const code = `const input = ${JSON.stringify(input)};\nfunction output(data) { console.log(JSON.stringify(data)); }\n${params.script}\n(async()=>{await main();})();`;
-      // Step 1: Write the code string to the temporary file
-      fs.writeFile(tempFilePath, code, (writeErr) => {
+      // Create a secure temporary directory with unpredictable name
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "nc-script-"));
+      const tempFilePath = path.join(tempDir, `script-${crypto.randomBytes(16).toString("hex")}.js`);
+      // Inject require guard, input data, and output helper
+      const code = `${REQUIRE_GUARD}\nconst input = ${JSON.stringify(input)};\nfunction output(data) { console.log(JSON.stringify(data)); }\n${params.script}\n(async()=>{await main();})();`;
+      // Step 1: Write the code string to the temporary file with restrictive permissions
+      fs.writeFile(tempFilePath, code, { mode: 0o600 }, (writeErr) => {
         if (writeErr) {
           console.error("Error writing temporary file:", writeErr.message);
+          fs.rmSync(tempDir, { recursive: true, force: true });
           return;
         }
 
-        // Step 2: Execute the temporary file using child_process
-        const command = `node ${tempFilePath}`;
-        exec(command, { cwd }, (execErr, stdout, stderr) => {
+        // Step 2: Execute the temporary file using execFile (no shell) with timeout and safe env
+        execFile("node", [tempFilePath], { cwd, env: getSafeEnv(), timeout: EXECUTION_TIMEOUT }, (execErr, stdout, stderr) => {
           if (execErr) {
             error = true;
-            console.error("Error executing script:", execErr.message);
-            message = execErr.message;
+            const isTimeout = execErr.killed || execErr.signal === "SIGTERM";
+            const errMsg = isTimeout ? `Script timed out after ${EXECUTION_TIMEOUT / 1000}s` : execErr.message;
+            console.error("Error executing script:", errMsg);
+            message = errMsg;
           } else {
             _result = stdout;
             if (stderr) {
@@ -106,13 +138,10 @@ class CustomScript extends Plugin {
             }
           }
 
-          // Step 3: Delete the temporary file
-          fs.unlink(tempFilePath, (unlinkErr) => {
-            if (unlinkErr) {
-              console.error(
-                "Error deleting temporary file:",
-                unlinkErr.message
-              );
+          // Step 3: Delete the entire temporary directory
+          fs.rm(tempDir, { recursive: true, force: true }, (rmErr) => {
+            if (rmErr) {
+              console.error("Error deleting temporary directory:", rmErr.message);
             }
           });
           resolve(_result);

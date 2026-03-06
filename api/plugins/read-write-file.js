@@ -1,6 +1,7 @@
 const Plugin = require("./../src/models/plugin");
 const fs = require("fs");
 const path = require("path");
+const { safePath } = require("./../src/safe-path");
 
 class ReadWriteFile extends Plugin {
   name() {
@@ -35,9 +36,15 @@ class ReadWriteFile extends Plugin {
   }
 
   async logic(params = {}) {
-    const filePath = params.file_path;
-    if (!filePath) {
+    if (!params.file_path) {
       return { status: { error: true, message: "File path is required" }, output: {} };
+    }
+
+    let filePath;
+    try {
+      filePath = safePath(params.file_path);
+    } catch (err) {
+      return { status: { error: true, message: err.message }, output: {} };
     }
 
     const operation = params.operation || "read";

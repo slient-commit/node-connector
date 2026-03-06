@@ -1,5 +1,6 @@
 const Plugin = require("./../src/models/plugin");
 const fs = require("fs");
+const { safePath } = require("./../src/safe-path");
 
 class Zip extends Plugin {
   name() {
@@ -50,32 +51,40 @@ class Zip extends Plugin {
       return { status: { error: true, message: "Destination path is required" }, output: {} };
     }
 
+    let source, destination;
+    try {
+      source = safePath(params.source);
+      destination = safePath(params.destination);
+    } catch (err) {
+      return { status: { error: true, message: err.message }, output: {} };
+    }
+
     try {
       if (params.operation === "zip") {
-        this.log(`Zipping: ${params.source}`);
+        this.log(`Zipping: ${source}`);
         const zip = new AdmZip();
-        const stat = fs.statSync(params.source);
+        const stat = fs.statSync(source);
         if (stat.isDirectory()) {
-          zip.addLocalFolder(params.source);
+          zip.addLocalFolder(source);
         } else {
-          zip.addLocalFile(params.source);
+          zip.addLocalFile(source);
         }
-        zip.writeZip(params.destination);
-        const size = fs.statSync(params.destination).size;
-        this.log(`Created: ${params.destination} (${size} bytes)`);
+        zip.writeZip(destination);
+        const size = fs.statSync(destination).size;
+        this.log(`Created: ${destination} (${size} bytes)`);
         return {
           status: { error: false, message: "Archive created" },
-          output: { path: params.destination, size },
+          output: { path: destination, size },
         };
       } else if (params.operation === "unzip") {
-        this.log(`Extracting: ${params.source}`);
-        const zip = new AdmZip(params.source);
-        zip.extractAllTo(params.destination, true);
+        this.log(`Extracting: ${source}`);
+        const zip = new AdmZip(source);
+        zip.extractAllTo(destination, true);
         const entries = zip.getEntries().length;
-        this.log(`Extracted ${entries} entries to: ${params.destination}`);
+        this.log(`Extracted ${entries} entries to: ${destination}`);
         return {
           status: { error: false, message: `Extracted ${entries} entries` },
-          output: { path: params.destination, entries },
+          output: { path: destination, entries },
         };
       } else {
         return {

@@ -22,10 +22,9 @@ export default class LoginComponent extends Component {
     const { username, password } = this.state;
     try {
       await this.authService.login(username, password);
-      if (this.authService.isAuthenticated()) window.location.href = "/editor";
-      else this.setState({ error: "Login failed" });
+      window.location.href = "/editor";
     } catch (err) {
-      this.setState({ error: "Login failed" });
+      this.setState({ error: err.message || "Login failed" });
     }
   };
 

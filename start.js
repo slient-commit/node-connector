@@ -130,9 +130,10 @@ if (isWindows) {
   startProcess("api", "node", ["index.js"], API_DIR, {
     PORT: String(port),
     DB_PATH: process.env.DB_PATH || "./db/sheets.db",
-    JWT_SECRET: process.env.JWT_SECRET || "change_me_jwt_secret",
-    REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET || "change_me_refresh_secret",
-    INTERNAL_API_KEY: process.env.INTERNAL_API_KEY || "change_me_internal_key",
+    ...(process.env.JWT_SECRET && { JWT_SECRET: process.env.JWT_SECRET }),
+    ...(process.env.REFRESH_TOKEN_SECRET && { REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET }),
+    ...(process.env.INTERNAL_API_KEY && { INTERNAL_API_KEY: process.env.INTERNAL_API_KEY }),
+    ...(process.env.ENCRYPTION_KEY && { ENCRYPTION_KEY: process.env.ENCRYPTION_KEY }),
   });
 
   // 5. Start scheduler (after short delay for API to be ready)
@@ -140,7 +141,7 @@ if (isWindows) {
     log("scheduler", "Starting scheduler...");
     startProcess("scheduler", "node", ["index.js"], SCHEDULER_DIR, {
       API_BASE_URL: `http://127.0.0.1:${port}`,
-      INTERNAL_API_KEY: process.env.INTERNAL_API_KEY || "change_me_internal_key",
+      ...(process.env.INTERNAL_API_KEY && { INTERNAL_API_KEY: process.env.INTERNAL_API_KEY }),
       LOG_LEVEL: process.env.LOG_LEVEL || "info",
     });
 

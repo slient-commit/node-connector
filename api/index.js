@@ -24,8 +24,11 @@ const path = require("path");
 const fs = require("fs");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const morgan = require("morgan");
+const verifyCsrfToken = require("./src/middleware/verifyCsrfToken");
 const config = require("./config");
 const authRoutes = require("./src/routes/auth");
 const sheetRoutes = require("./src/routes/sheet");
@@ -35,22 +38,80 @@ const SheetManager = require("./src/sheet-manager");
 const Node = require("./src/node");
 const NodeExecuter = require("./src/node-executer");
 const ExecutionHistory = require("./src/models/execution-history");
+const AuditLog = require("./src/models/audit-log");
 
 (async () => {
   dotenv.config();
 
   const app = express();
 
+  // Trust reverse proxy (nginx) for X-Forwarded-Proto and client IP
+  if (process.env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
+
   // Middlewares
-  app.use(cors());
-  app.use(helmet());
+  const corsOrigin = process.env.CORS_ORIGIN || `http://localhost:${config.port}`;
+  app.use(cors({ origin: corsOrigin, credentials: true }));
+  app.use(cookieParser());
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+  }));
   app.use(morgan("tiny"));
   app.use(express.json());
+
+  // Redirect HTTP to HTTPS in production
+  if (process.env.NODE_ENV === "production") {
+    app.use((req, res, next) => {
+      if (req.secure) return next();
+      res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
+    });
+  }
 
   // Create table if not exists
   await User.createUserTable();
   await new SheetManager().createDbTable();
   await ExecutionHistory.createTable();
+  await AuditLog.createTable();
+
+  // Rate limiting
+  app.use(rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please try again later" },
+  }));
+
+  app.use("/auth/login", rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many login attempts, please try again later" },
+  }));
+
+  app.use("/auth/register", rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many registration attempts, please try again later" },
+  }));
+
+  // CSRF protection (skips GET/HEAD/OPTIONS and internal API key requests)
+  app.use(verifyCsrfToken);
 
   // Routes
   app.use("/auth", authRoutes);

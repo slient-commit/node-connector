@@ -2,7 +2,12 @@ const cron = require("node-cron");
 const logger = require("./logger");
 
 const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:3001";
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "default_internal_key";
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
+
+if (!INTERNAL_API_KEY) {
+  logger.error("INTERNAL_API_KEY environment variable is required. Set it in .env");
+  process.exit(1);
+}
 
 // Map of sheetUid -> { task, schedule }
 const activeCronJobs = new Map();

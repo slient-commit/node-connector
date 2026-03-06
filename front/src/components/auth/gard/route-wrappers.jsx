@@ -8,11 +8,7 @@ export const PrivateRoute = ({ children }) => {
   const [status, setStatus] = useState("loading");
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      setStatus("denied");
-      return;
-    }
-    authService.verify().then((valid) => {
+    authService.isAuthenticated().then((valid) => {
       if (!valid) {
         authService.logout();
       }
@@ -26,8 +22,15 @@ export const PrivateRoute = ({ children }) => {
 };
 
 export const GuestOnlyRoute = ({ children }) => {
-  if (authService.isAuthenticated()) {
-    return <Navigate to="/editor" replace />;
-  }
+  const [status, setStatus] = useState("loading");
+
+  useEffect(() => {
+    authService.isAuthenticated().then((valid) => {
+      setStatus(valid ? "authenticated" : "guest");
+    });
+  }, []);
+
+  if (status === "loading") return null;
+  if (status === "authenticated") return <Navigate to="/editor" replace />;
   return children;
 };

@@ -6,50 +6,47 @@ class API {
     this._config();
   }
 
-  processQueue(error, token = null) {
+  processQueue(error) {
     this.failedQueue.forEach((prom) => {
       if (error) {
         prom.reject(error);
       } else {
-        prom.resolve(token);
+        prom.resolve();
       }
     });
 
     this.failedQueue = [];
   }
 
-  _config() {
-    // You can't intercept requests like Axios, so we'll create a wrapper method
-    this.fetch = async (url, options = {}) => {
-      const token = localStorage.getItem("token");
+  _getCsrfToken() {
+    const match = document.cookie.match(/(?:^|; )csrfToken=([^;]*)/);
+    return match ? match[1] : "";
+  }
 
+  _config() {
+    this.fetch = async (url, options = {}) => {
       const headers = {
         "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
+        "X-CSRF-Token": this._getCsrfToken(),
         ...options.headers,
       };
 
       const config = {
         ...options,
         headers,
+        credentials: "include",
       };
 
       let response = await fetch(this.baseURL + url, config);
 
-      // If token expired, handle refresh
-      if (response.status === 401) {
-        const originalRequest = { url, config, retry: false };
-
+      // If token expired, try refresh (skip for auth endpoints to avoid loops)
+      if (response.status === 401 && !url.startsWith("/auth/")) {
         try {
-          const newToken = await this.handleRefreshToken(originalRequest);
-          config.headers["Authorization"] = `Bearer ${newToken}`;
+          await this.handleRefreshToken();
           response = await fetch(this.baseURL + url, config);
         } catch (err) {
           console.error("Auth error:", err);
-          localStorage.removeItem("token");
-          localStorage.removeItem("refreshToken");
           window.location.href = "/login";
-          // throw err;
         }
       }
 
@@ -57,7 +54,7 @@ class API {
     };
   }
 
-  async handleRefreshToken(originalRequest) {
+  async handleRefreshToken() {
     if (this.isRefreshing) {
       return new Promise((resolve, reject) => {
         this.failedQueue.push({ resolve, reject });
@@ -65,53 +62,33 @@ class API {
     }
 
     this.isRefreshing = true;
-    const refreshToken = localStorage.getItem("refreshToken");
 
     try {
       const res = await fetch(this.baseURL + "/auth/refresh-token", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ refreshToken }),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
       });
 
       if (!res.ok) throw new Error("Failed to refresh token");
 
-      const data = await res.json();
-
-      localStorage.setItem("token", data.accessToken);
-
-      this.processQueue(null, data.accessToken);
+      this.processQueue(null);
       this.isRefreshing = false;
-
-      return data.accessToken;
     } catch (err) {
-      this.processQueue(err, null);
+      this.processQueue(err);
       this.isRefreshing = false;
-      // throw err;
+      throw err;
     }
   }
 
-  // Helper methods to mimic axios.get/post/etc.
+  // Helper methods
   get(url, options) {
-    return this.fetch(url, {
-      ...options,
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-        "Content-Type": "application/json", // Optional depending on API requirements
-      },
-    });
+    return this.fetch(url, { ...options, method: "GET" });
   }
 
   post(url, body, options) {
     return this.fetch(url, {
       ...options,
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-        "Content-Type": "application/json", // Optional depending on API requirements
-      },
       method: "POST",
       body: JSON.stringify(body),
     });
@@ -120,24 +97,13 @@ class API {
   put(url, body, options) {
     return this.fetch(url, {
       ...options,
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-        "Content-Type": "application/json", // Optional depending on API requirements
-      },
       method: "PUT",
       body: JSON.stringify(body),
     });
   }
 
   delete(url, options) {
-    return this.fetch(url, {
-      ...options,
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-        "Content-Type": "application/json", // Optional depending on API requirements
-      },
-    });
+    return this.fetch(url, { ...options, method: "DELETE" });
   }
 
   async sse(url, queries, callback = undefined) {
@@ -145,9 +111,9 @@ class API {
     queries.forEach((q) => {
       query += `&${q.name}=${q.value}`;
     });
-    // Create EventSource with query parameter for JWT
+    // Cookies are sent automatically with same-origin EventSource
     const eventSource = new EventSource(
-      `${this.baseURL + url}?token=${localStorage.getItem("token")}${query}`
+      `${this.baseURL + url}?${query.substring(1)}`
     );
 
     eventSource.onmessage = function (event) {
@@ -163,10 +129,6 @@ class API {
   async fetchSSE(method, url, body, options, callback = undefined) {
     const response = await this.fetch(url, {
       ...options,
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-        "Content-Type": "application/json", // Optional depending on API requirements
-      },
       method: method,
       body: JSON.stringify(body),
     });

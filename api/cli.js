@@ -8,7 +8,12 @@ if (!sheetUid) {
 }
 
 const PORT = process.env.PORT || 3001;
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "change_me_internal_key";
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
+
+if (!INTERNAL_API_KEY) {
+  console.error("Error: INTERNAL_API_KEY environment variable is required.");
+  process.exit(1);
+}
 const BASE_URL = `http://localhost:${PORT}`;
 
 async function execute() {

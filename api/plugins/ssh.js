@@ -1,6 +1,16 @@
 const Plugin = require("./../src/models/plugin");
 const { Client } = require("ssh2");
 
+const SSH_CONNECT_TIMEOUT = 10000; // 10 seconds
+const SSH_COMMAND_TIMEOUT = 30000; // 30 seconds per command
+
+// Strip null bytes and non-printable control characters (keep \n and \t)
+// eslint-disable-next-line no-control-regex
+const UNSAFE_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
+function sanitizeCommand(cmd) {
+  return cmd.replace(UNSAFE_CHARS, "");
+}
+
 class SSHTool extends Plugin {
   description() {
     return "SSH Tool";
@@ -42,6 +52,7 @@ class SSHTool extends Plugin {
         name: "Password",
         alias: "ssh_password",
         type: "string",
+        secret: true,
         default: undefined,
         value: undefined,
       },
@@ -58,86 +69,104 @@ class SSHTool extends Plugin {
   async logic(params = {}) {
     let error = false;
     let message = "All commands executed successfully.";
-    await new Promise((_resolve) => {
-      // Configuration for the SSH connection
-      const sshConfig = {
-        host: params.ssh_host, // Replace with your SSH server's hostname or IP
-        port: 22, // Default SSH port is 22
-        username: params.ssh_username, // Replace with your SSH username
-        password: params.ssh_password, // Replace with your SSH password (or use privateKey)
-        // privateKey: require('fs').readFileSync('/path/to/private/key'), // Uncomment if using key-based auth
+    const commandOutputs = [];
+
+    if (!params.ssh_host || !params.ssh_username || !params.ssh_cmd) {
+      return {
+        status: { error: true, message: "Host, username, and command are required" },
+        output: {},
       };
-      const commands = params.ssh_cmd.split(",");
-      // Create an SSH client
+    }
+
+    // Sanitize and validate commands
+    const commands = params.ssh_cmd
+      .split(",")
+      .map((cmd) => sanitizeCommand(cmd.trim()))
+      .filter((cmd) => cmd.length > 0);
+
+    if (commands.length === 0) {
+      return {
+        status: { error: true, message: "No valid commands to execute" },
+        output: {},
+      };
+    }
+
+    await new Promise((_resolve) => {
+      const sshConfig = {
+        host: params.ssh_host,
+        port: 22,
+        username: params.ssh_username,
+        password: params.ssh_password,
+        readyTimeout: SSH_CONNECT_TIMEOUT,
+      };
+
       const sshClient = new Client();
-      // Connect to the SSH server
+
       sshClient.on("ready", () => {
         this.log("SSH connection established.");
 
-        // Function to execute commands sequentially
         const executeCommands = async (cmds) => {
           for (const cmd of cmds) {
-            await new Promise((resolve, reject) => {
-              sshClient.exec(cmd.trim(), (err, stream) => {
+            this.log(`Executing: ${cmd}`);
+            const cmdResult = await new Promise((resolve, reject) => {
+              let stdout = "";
+              let stderr = "";
+
+              // Per-command timeout
+              const timer = setTimeout(() => {
+                reject(new Error(`Command timed out after ${SSH_COMMAND_TIMEOUT / 1000}s: "${cmd}"`));
+              }, SSH_COMMAND_TIMEOUT);
+
+              sshClient.exec(cmd, (err, stream) => {
                 if (err) {
-                  this.log(
-                    `Error executing command "${cmd}": ${err.message}`,
-                    "error"
-                  );
-                  console.error(
-                    `Error executing command "${cmd}":`,
-                    err.message
-                  );
+                  clearTimeout(timer);
+                  this.log(`Error executing command "${cmd}": ${err.message}`, "error");
                   return reject(err);
                 }
 
-                // Handle data from the command execution
                 stream.on("data", (data) => {
-                  this.log(`Output of "${cmd}":\n${data}`);
+                  stdout += data.toString();
                 });
 
-                // Handle errors from the command execution
                 stream.stderr.on("data", (data) => {
-                  this.log(`Error output of "${cmd}":\n${data}`, "error");
+                  stderr += data.toString();
                 });
 
-                // Resolve the promise when the command finishes
-                stream.on("close", (code, signal) => {
+                stream.on("close", (code) => {
+                  clearTimeout(timer);
                   this.log(`Command "${cmd}" exited with code ${code}`);
-                  resolve();
+                  if (stdout) this.log(`Output: ${stdout.trim()}`);
+                  if (stderr) this.log(`Stderr: ${stderr.trim()}`, "error");
+                  resolve({ cmd, code, stdout: stdout.trim(), stderr: stderr.trim() });
                 });
               });
             });
+            commandOutputs.push(cmdResult);
           }
         };
 
-        // Execute all commands and close the connection
         executeCommands(commands)
           .then(() => {
-            console.log("All commands executed successfully.");
             message = "All commands executed successfully.";
-            sshClient.end(); // Close the SSH connection
+            sshClient.end();
             _resolve();
           })
           .catch((err) => {
             error = true;
-            message = "Failed to execute commands:" + err.message;
-            console.error("Failed to execute commands:", err.message);
-            this.log("Failed to execute commands:" + err.message, "error");
-            sshClient.end(); // Ensure the connection is closed even if there's an error
+            message = "Failed to execute commands: " + err.message;
+            this.log(message, "error");
+            sshClient.end();
             _resolve();
           });
       });
 
-      // Handle connection errors
       sshClient.on("error", (err) => {
         error = true;
-        message = "SSH connection error:" + err.message;
-        this.log("SSH connection error:" + err.message, "error");
+        message = "SSH connection error: " + err.message;
+        this.log(message, "error");
         _resolve();
       });
 
-      // Connect to the SSH server
       sshClient.connect(sshConfig);
     });
 
@@ -146,7 +175,7 @@ class SSHTool extends Plugin {
         error: error,
         message: message,
       },
-      output: {},
+      output: { results: commandOutputs },
     };
   }
 }

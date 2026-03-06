@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const Plugin = require("./../src/models/plugin");
+const { safePath } = require("./../src/safe-path");
 
 class RenameFile extends Plugin {
   name() {
@@ -66,12 +67,14 @@ class RenameFile extends Plugin {
     }
 
     const baseDir = params.working_directory || "/data";
-    const resolvedSource = path.isAbsolute(sourcePath)
-      ? sourcePath
-      : path.join(baseDir, sourcePath);
-    const resolvedDest = path.isAbsolute(destPath)
-      ? destPath
-      : path.join(baseDir, destPath);
+
+    let resolvedSource, resolvedDest;
+    try {
+      resolvedSource = safePath(sourcePath, baseDir);
+      resolvedDest = safePath(destPath, baseDir);
+    } catch (err) {
+      return { status: { error: true, message: err.message }, output: {} };
+    }
 
     try {
       if (!fs.existsSync(resolvedSource)) {

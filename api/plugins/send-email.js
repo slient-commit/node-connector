@@ -26,7 +26,7 @@ class SendEmail extends Plugin {
       { name: "SMTP Host", alias: "smtp_host", type: "string", default: "smtp.gmail.com", value: undefined },
       { name: "SMTP Port", alias: "smtp_port", type: "number", default: 587, value: undefined },
       { name: "Username", alias: "username", type: "string", default: "", value: undefined },
-      { name: "Password", alias: "password", type: "string", default: "", value: undefined },
+      { name: "Password", alias: "password", type: "string", secret: true, default: "", value: undefined },
       { name: "From", alias: "from", type: "string", default: "", value: undefined },
       { name: "To", alias: "to", type: "string", default: "", value: undefined },
       { name: "Subject", alias: "subject", type: "string", default: "", value: undefined },

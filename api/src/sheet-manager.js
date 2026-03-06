@@ -2,8 +2,74 @@ const { v4: uuidv4 } = require("uuid");
 const SQLiteManager = require("./sqlite-manager");
 const IO = require("./io");
 const NodeExecuter = require("./node-executer");
+const { encrypt, decrypt, isEncrypted } = require("./crypto-utils");
+
+// Registry of secret param aliases per plugin className.
+// Ensures old sheets (saved before secret:true existed) get annotated correctly.
+const SECRET_PARAMS = {
+  SSHTool: ["ssh_password"],
+  FTPTool: ["password"],
+  SendEmail: ["password"],
+};
 
 class SheetManager {
+  // Annotate params with secret:true based on the registry
+  _annotateSecretParams(sheet) {
+    if (sheet && sheet.data && sheet.data.nodes) {
+      for (const node of sheet.data.nodes) {
+        if (!node.params || !node.className) continue;
+        const secretAliases = SECRET_PARAMS[node.className];
+        if (!secretAliases) continue;
+        for (const param of node.params) {
+          if (!param) continue;
+          if (secretAliases.includes(param.alias)) {
+            param.secret = true;
+          }
+        }
+      }
+    }
+  }
+
+  // Encrypt secret param values (returns a deep clone, does NOT mutate input)
+  _encryptSecretParams(sheet) {
+    const copy = JSON.parse(JSON.stringify(sheet));
+    this._annotateSecretParams(copy);
+    if (copy.data && copy.data.nodes) {
+      for (const node of copy.data.nodes) {
+        if (!node.params) continue;
+        for (const param of node.params) {
+          if (!param) continue;
+          if (param.secret && param.value && !isEncrypted(param.value)) {
+            param.value = encrypt(param.value);
+          }
+        }
+      }
+    }
+    return copy;
+  }
+
+  // Decrypt secret param values (mutates in place — called on freshly loaded data)
+  _decryptSecretParams(sheet) {
+    this._annotateSecretParams(sheet);
+    if (sheet && sheet.data && sheet.data.nodes) {
+      for (const node of sheet.data.nodes) {
+        if (!node.params) continue;
+        for (const param of node.params) {
+          if (!param) continue;
+          if (param.secret && isEncrypted(param.value)) {
+            try {
+              param.value = decrypt(param.value);
+            } catch (_err) {
+              // If decryption fails (e.g. key changed), leave value as-is
+              param.value = "";
+            }
+          }
+        }
+      }
+    }
+    return sheet;
+  }
+
   async create(name) {
     const sheet = {
       id: -1,
@@ -35,7 +101,8 @@ class SheetManager {
   }
 
   save(sheet) {
-    new IO().write(sheet, `./sheets/${sheet.uid}.json`);
+    const encrypted = this._encryptSecretParams(sheet);
+    new IO().write(encrypted, `./sheets/${sheet.uid}.json`);
   }
 
   async load(uid) {
@@ -50,7 +117,8 @@ class SheetManager {
       });
 
     if (!row) return null;
-    return new IO().read(`./sheets/${row.uid}.json`);
+    const sheet = new IO().read(`./sheets/${row.uid}.json`);
+    return this._decryptSecretParams(sheet);
   }
 
   async addNode(sheet, node) {

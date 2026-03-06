@@ -1,6 +1,7 @@
 const Plugin = require("./../src/models/plugin");
 const fs = require("fs");
 const path = require("path");
+const { safePath } = require("./../src/safe-path");
 
 class DownloadFile extends Plugin {
   name() {
@@ -39,6 +40,13 @@ class DownloadFile extends Plugin {
       return { status: { error: true, message: "Destination path is required" }, output: {} };
     }
 
+    let destination;
+    try {
+      destination = safePath(params.destination);
+    } catch (err) {
+      return { status: { error: true, message: err.message }, output: {} };
+    }
+
     const timeout = parseInt(params.timeout, 10) || 60000;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -56,18 +64,18 @@ class DownloadFile extends Plugin {
         };
       }
 
-      const dir = path.dirname(params.destination);
+      const dir = path.dirname(destination);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
       const buffer = Buffer.from(await response.arrayBuffer());
-      fs.writeFileSync(params.destination, buffer);
+      fs.writeFileSync(destination, buffer);
 
-      this.log(`Saved to: ${params.destination} (${buffer.length} bytes)`);
+      this.log(`Saved to: ${destination} (${buffer.length} bytes)`);
 
       return {
         status: { error: false, message: "File downloaded" },
         output: {
-          path: params.destination,
+          path: destination,
           size: buffer.length,
           statusCode: response.status,
           contentType: response.headers.get("content-type"),

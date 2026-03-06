@@ -38,11 +38,11 @@ COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Default environment variables for API
+ENV NODE_ENV=production
 ENV PORT=3001
 ENV DB_PATH=./db/sheets.db
-ENV JWT_SECRET=change_me_jwt_secret
-ENV REFRESH_TOKEN_SECRET=change_me_refresh_secret
-ENV INTERNAL_API_KEY=change_me_internal_key
+# Secrets MUST be provided at runtime via docker run -e or docker-compose
+# JWT_SECRET, REFRESH_TOKEN_SECRET, INTERNAL_API_KEY, ENCRYPTION_KEY
 
 # Default environment variables for scheduler
 ENV API_BASE_URL=http://127.0.0.1:3001

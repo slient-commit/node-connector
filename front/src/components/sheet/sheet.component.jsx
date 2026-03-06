@@ -790,7 +790,7 @@ export default class SheetComponent extends Component {
           input.appendChild(wrapper);
         });
       } else {
-        input.type = "text";
+        input.type = param.secret ? "password" : "text";
         input.value = param.value
           ? param.value
           : param.default
@@ -976,7 +976,7 @@ export default class SheetComponent extends Component {
           </label>
           <button className="zoom-btn" onClick={() => this.applyZoom(this.scale + 0.1)}>+</button>
           <button className="zoom-btn" onClick={() => this.applyZoom(this.scale - 0.1)}>-</button>
-          <button className="toolbar-btn logout-btn" onClick={() => { this.auth.logout(); window.location.href = "/login"; }} title="Logout">
+          <button className="toolbar-btn logout-btn" onClick={async () => { await this.auth.logout(); window.location.href = "/login"; }} title="Logout">
             <i className="fa-solid fa-right-from-bracket"></i> Logout
           </button>
         </div>

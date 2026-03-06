@@ -6,6 +6,8 @@ const SheetManager = require("../sheet-manager");
 const Node = require("../node");
 const Executer = require("../executer");
 const ExecutionHistory = require("../models/execution-history");
+const { validateParams, validatePosition, validateStringArray } = require("../middleware/validateNodeParams");
+const AuditLog = require("../models/audit-log");
 
 // Protected route example
 router.get(
@@ -59,6 +61,7 @@ router.post(
   require("../middleware/authenticateToken"),
   async (req, res) => {
     const sheet = await new SheetManager().create(req.body.name);
+    AuditLog.log({ event: "sheet_create", userId: req.user.id, ip: req.ip, details: { name: req.body.name, uid: sheet.uid } });
     res.json(sheet);
   }
 );
@@ -67,12 +70,48 @@ router.put(
   "/update",
   require("../middleware/authenticateToken"),
   async (req, res) => {
+    const reqSheet = req.body.sheet;
+    if (!reqSheet || typeof reqSheet !== "object") {
+      return res.status(400).json({ error: "sheet is required" });
+    }
+    if (reqSheet.name !== undefined && typeof reqSheet.name !== "string") {
+      return res.status(400).json({ error: "name must be a string" });
+    }
+    if (!reqSheet.data || !Array.isArray(reqSheet.data.nodes)) {
+      return res.status(400).json({ error: "sheet.data.nodes must be an array" });
+    }
+
+    // Validate params for each node in the update
+    for (let i = 0; i < reqSheet.data.nodes.length; i++) {
+      const n = reqSheet.data.nodes[i];
+      if (!n || typeof n !== "object") {
+        return res.status(400).json({ error: `Invalid node at index ${i}` });
+      }
+      if (n.params !== undefined) {
+        const result = validateParams(n.params);
+        if (!result.valid) {
+          return res.status(400).json({ error: `Node ${i}: ${result.error}` });
+        }
+        n.params = result.sanitized;
+      }
+      if (n.position !== undefined && !validatePosition(n.position)) {
+        return res.status(400).json({ error: `Node ${i}: position must have numeric x and y` });
+      }
+      if (n.inputs !== undefined && !validateStringArray(n.inputs)) {
+        return res.status(400).json({ error: `Node ${i}: inputs must be an array of strings` });
+      }
+      if (n.outputs !== undefined && !validateStringArray(n.outputs)) {
+        return res.status(400).json({ error: `Node ${i}: outputs must be an array of strings` });
+      }
+    }
+
     const sheetManager = new SheetManager();
-    const sheet = await sheetManager.load(req.body.sheet.uid);
+    const sheet = await sheetManager.load(reqSheet.uid);
     if (sheet) {
-      sheet.name = req.body.sheet.name;
-      sheet.data.nodes = req.body.sheet.data.nodes;
+      sheet.name = reqSheet.name;
+      sheet.data.nodes = reqSheet.data.nodes;
       sheetManager.save(sheet);
+      AuditLog.log({ event: "sheet_update", userId: req.user.id, ip: req.ip, details: { uid: reqSheet.uid } });
       res.json({ message: "sheet updated" });
       return;
     }
@@ -85,15 +124,28 @@ router.post(
   "/node",
   require("../middleware/authenticateToken"),
   async (req, res) => {
-    const sheetUid = req.body.sheetId;
-    const sheet = await new SheetManager().load(sheetUid);
+    const { sheetId, title, pluginId, position, params } = req.body;
+
+    if (!title || typeof title !== "string") {
+      return res.status(400).json({ error: "title is required and must be a string" });
+    }
+    if (!pluginId || typeof pluginId !== "string") {
+      return res.status(400).json({ error: "pluginId is required and must be a string" });
+    }
+    if (position !== undefined && !validatePosition(position)) {
+      return res.status(400).json({ error: "position must have numeric x and y" });
+    }
+    if (params !== undefined) {
+      const result = validateParams(params);
+      if (!result.valid) {
+        return res.status(400).json({ error: result.error });
+      }
+    }
+
+    const sheet = await new SheetManager().load(sheetId);
     if (sheet) {
-      const node = new Node(
-        req.body.title,
-        req.body.pluginId,
-        req.body.position,
-        req.body.params
-      );
+      const validatedParams = params !== undefined ? validateParams(params).sanitized : [];
+      const node = new Node(title, pluginId, position, validatedParams);
       await new SheetManager().addNode(sheet, node);
       res.json({ id: node.id, message: "created" });
       return;
@@ -113,6 +165,7 @@ router.get(
     if (sheet) {
       const node = sheet.data.nodes.find((x) => x.id === req.query.nodeId);
       if (node) {
+        AuditLog.log({ event: "sheet_execute", userId: req.user.id, ip: req.ip, details: { sheetUid, nodeId: node.id } });
         const store = sheets.getNodeStore(sheet);
         const exec = store.find((x) => x.node.id === node.id);
         // Set headers for SSE
@@ -146,11 +199,12 @@ router.get(
           );
           // await exec.trigger(store, "./../plugins", {}, debug);
         } catch (err) {
+          console.error(`Node execution error [${node.id}]:`, err.message);
           debug({
             id: node.id,
             result: {},
             error: true,
-            message: `Error while executing: ${err.message}`,
+            message: "An error occurred during execution",
             stage: "executing",
           });
         }
@@ -173,8 +227,31 @@ router.put(
   require("../middleware/authenticateToken"),
   async (req, res) => {
     const sheetUid = req.body.sheetId;
-    const sheet = await new SheetManager().load(sheetUid);
     const _node = req.body.node;
+
+    if (!_node || typeof _node !== "object") {
+      return res.status(400).json({ error: "node is required" });
+    }
+    if (_node.title !== undefined && typeof _node.title !== "string") {
+      return res.status(400).json({ error: "title must be a string" });
+    }
+    if (_node.position !== undefined && !validatePosition(_node.position)) {
+      return res.status(400).json({ error: "position must have numeric x and y" });
+    }
+    if (_node.inputs !== undefined && !validateStringArray(_node.inputs)) {
+      return res.status(400).json({ error: "inputs must be an array of strings" });
+    }
+    if (_node.outputs !== undefined && !validateStringArray(_node.outputs)) {
+      return res.status(400).json({ error: "outputs must be an array of strings" });
+    }
+    if (_node.params !== undefined) {
+      const result = validateParams(_node.params);
+      if (!result.valid) {
+        return res.status(400).json({ error: result.error });
+      }
+    }
+
+    const sheet = await new SheetManager().load(sheetUid);
     if (sheet) {
       const node = sheet.data.nodes.find((x) => x.id === _node.id);
       if (node) {
@@ -182,7 +259,7 @@ router.put(
         node.inputs = _node.inputs;
         node.outputs = _node.outputs;
         node.position = _node.position;
-        node.params = _node.params;
+        node.params = _node.params !== undefined ? validateParams(_node.params).sanitized : node.params;
         await new SheetManager().save(sheet);
         res.json({ message: "updated" });
         return;
@@ -209,6 +286,7 @@ router.put(
       });
       sheet.data.nodes = sheet.data.nodes.filter((x) => x.id !== _node.id);
       await new SheetManager().save(sheet);
+      AuditLog.log({ event: "sheet_delete", userId: req.user.id, ip: req.ip, details: { sheetId: req.body.sheetId, nodeId: _node.id } });
       res.json({ message: "node deleted" });
       return;
     }
@@ -246,6 +324,7 @@ router.put(
     }
 
     await new SQLiteManager().update("sheets", columnsToUpdate, [{ name: "uid", value: uid }]);
+    AuditLog.log({ event: "sheet_settings_update", userId: req.user.id, ip: req.ip, details: { uid, fields: columnsToUpdate.map((c) => c.name) } });
     res.json({ message: "settings updated" });
   }
 );
@@ -448,6 +527,7 @@ router.post(
       resultsSummary: results,
     });
 
+    AuditLog.log({ event: "webhook_trigger", ip: req.ip, details: { sheetUid, status: overallStatus } });
     res.json({ sheetUid, sheetName: sheet.name, results });
   }
 );

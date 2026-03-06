@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import "./list.css";
 import DataService from "./../../services/data.service";
 import AuthService from "./../../services/auth.service";
+import { validatePassword } from "../../utils/validate-password";
 
 const CRON_OPTIONS = [
   { label: "Every 15 seconds", value: "*/15 * * * * *" },
@@ -132,8 +133,9 @@ export default class ListComponent extends Component {
       this.setState({ profileError: "New passwords do not match", profileSuccess: "" });
       return;
     }
-    if (profileNewPassword.length < 4) {
-      this.setState({ profileError: "New password must be at least 4 characters", profileSuccess: "" });
+    const pwCheck = validatePassword(profileNewPassword);
+    if (!pwCheck.valid) {
+      this.setState({ profileError: pwCheck.error, profileSuccess: "" });
       return;
     }
     try {
@@ -149,8 +151,8 @@ export default class ListComponent extends Component {
     }
   };
 
-  handleLogout = () => {
-    this.auth.logout();
+  handleLogout = async () => {
+    await this.auth.logout();
     window.location.href = "/login";
   };
 
@@ -312,7 +314,7 @@ export default class ListComponent extends Component {
                     <label>Docker exec:</label>
                     <code>docker exec node-connector node api/cli.js {this.state.settingsSheet?.uid}</code>
                     <label>Or with curl:</label>
-                    <code>curl -X POST http://localhost/api/sheet/execute-batch -H "Content-Type: application/json" -H "X-Internal-Key: change_me_internal_key" -d "{'{'}\"sheetUid\":\"{this.state.settingsSheet?.uid}\"{'}'}"</code>
+                    <code>curl -X POST http://localhost/api/sheet/execute-batch -H "Content-Type: application/json" -H "X-Internal-Key: YOUR_INTERNAL_API_KEY" -d "{'{'}\"sheetUid\":\"{this.state.settingsSheet?.uid}\"{'}'}"</code>
                   </div>
                 )}
 

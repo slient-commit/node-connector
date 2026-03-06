@@ -472,6 +472,7 @@
 <div class="hero">
   <h1>Node Connector</h1>
   <p>A visual workflow automation platform. Build chains of executable plugins, trigger them via cron, webhook, or terminal, and monitor execution in real-time.</p>
+  <p style="margin-top: 12px; font-size: 0.95em; color: var(--text-muted); max-width: 720px;">This project started from a single script file that automated repetitive tasks &mdash; manual deployments, server health checks, file operations &mdash; because I had no access to tools like n8n or a proper CI/CD pipeline. Over time that script grew too large to maintain, so I took inspiration from n8n and rebuilt it as a visual node-based editor. Node Connector is a personal project; while the codebase has been hardened with production-grade security practices, it was built for personal use and is not intended as a production platform.</p>
   <div class="badge-row">
     <span class="badge badge-blue">Express.js 5</span>
     <span class="badge badge-green">React 19</span>
@@ -653,9 +654,12 @@ node start.js</code></pre>
   <table>
     <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
     <tr><td><code>PORT</code></td><td><code>3001</code></td><td>HTTP port for API + frontend</td></tr>
-    <tr><td><code>JWT_SECRET</code></td><td><code>change_me_jwt_secret</code></td><td>JWT signing secret</td></tr>
-    <tr><td><code>REFRESH_TOKEN_SECRET</code></td><td><code>change_me_refresh_secret</code></td><td>Refresh token secret</td></tr>
-    <tr><td><code>INTERNAL_API_KEY</code></td><td><code>change_me_internal_key</code></td><td>Scheduler/CLI to API key</td></tr>
+    <tr><td><code>JWT_SECRET</code></td><td><em>random per session</em></td><td>JWT signing secret (required in production)</td></tr>
+    <tr><td><code>REFRESH_TOKEN_SECRET</code></td><td><em>random per session</em></td><td>Refresh token secret (required in production)</td></tr>
+    <tr><td><code>INTERNAL_API_KEY</code></td><td><em>random per session</em></td><td>Scheduler/CLI to API key (required in production)</td></tr>
+    <tr><td><code>ENCRYPTION_KEY</code></td><td><em>random per session</em></td><td>AES-256 encryption key for secret params (required in production)</td></tr>
+    <tr><td><code>CORS_ORIGIN</code></td><td><code>http://localhost:PORT</code></td><td>Allowed CORS origin (set to your domain in production)</td></tr>
+    <tr><td><code>DATA_DIR</code></td><td><code>/data</code></td><td>Base directory for file-operation plugins (path traversal sandbox)</td></tr>
   </table>
 
   <h3>Rebuilding the Frontend</h3>
@@ -703,11 +707,13 @@ sudo journalctl -u node-connector -f     # View logs</code></pre>
   <pre><code>docker build -t node-connector .
 docker run -d -p 80:80 node-connector</code></pre>
 
-  <h3>With Custom Secrets</h3>
+  <h3>With Required Secrets</h3>
+  <p>All secret environment variables are <strong>required</strong> in production. The container will exit on startup if any are missing.</p>
   <pre><code>docker run -d -p 80:80 \
-  -e JWT_SECRET=my_jwt_secret \
-  -e REFRESH_TOKEN_SECRET=my_refresh_secret \
-  -e INTERNAL_API_KEY=my_internal_key \
+  -e JWT_SECRET=$(openssl rand -hex 32) \
+  -e REFRESH_TOKEN_SECRET=$(openssl rand -hex 32) \
+  -e INTERNAL_API_KEY=$(openssl rand -hex 32) \
+  -e ENCRYPTION_KEY=$(openssl rand -hex 32) \
   node-connector</code></pre>
 
   <h3>With Host Volume (for file operations)</h3>
@@ -743,7 +749,7 @@ docker run -d -p 80:80 --name node-connector node-connector</code></pre>
 <!-- ════════════════════════════════════════════ -->
 <section id="auth">
   <h2>Authentication</h2>
-  <p>The API uses JWT-based authentication. Access tokens expire in 15 minutes and can be refreshed using a long-lived refresh token.</p>
+  <p>The API uses JWT-based authentication with <strong>httpOnly cookies</strong>. Access tokens expire in 15 minutes and are automatically refreshed using a refresh token cookie (7-day expiry). Tokens are never exposed to JavaScript, preventing XSS-based token theft.</p>
 
   <div class="endpoint">
     <div class="endpoint-header">
@@ -760,9 +766,15 @@ docker run -d -p 80:80 --name node-connector node-connector</code></pre>
       <span class="method method-post">POST</span>
       <span class="endpoint-path">/auth/login</span>
     </div>
-    <div class="endpoint-desc">Login and receive tokens.</div>
+    <div class="endpoint-desc">Login and receive authentication cookies.</div>
     <div class="endpoint-detail"><strong>Body:</strong> <code>{ "username": "...", "password": "..." }</code></div>
-    <div class="endpoint-detail"><strong>Response:</strong> <code>200</code> &mdash; <code>{ "accessToken": "...", "refreshToken": "..." }</code></div>
+    <div class="endpoint-detail"><strong>Response:</strong> <code>200</code> &mdash; <code>{ "message": "Login successful" }</code></div>
+    <div class="endpoint-detail"><strong>Cookies Set:</strong>
+      <ul>
+        <li><code>token</code> &mdash; httpOnly, secure (production), sameSite=strict, 15 min expiry</li>
+        <li><code>refreshToken</code> &mdash; httpOnly, secure (production), sameSite=strict, path=/auth/refresh-token, 7 day expiry</li>
+      </ul>
+    </div>
   </div>
 
   <div class="endpoint">
@@ -770,9 +782,29 @@ docker run -d -p 80:80 --name node-connector node-connector</code></pre>
       <span class="method method-post">POST</span>
       <span class="endpoint-path">/auth/refresh-token</span>
     </div>
-    <div class="endpoint-desc">Get a new access token using a refresh token.</div>
-    <div class="endpoint-detail"><strong>Body:</strong> <code>{ "refreshToken": "..." }</code></div>
-    <div class="endpoint-detail"><strong>Response:</strong> <code>200</code> &mdash; <code>{ "accessToken": "..." }</code></div>
+    <div class="endpoint-desc">Refresh the access token. The refresh token is read from the cookie automatically.</div>
+    <div class="endpoint-detail"><strong>Auth:</strong> <code>refreshToken</code> cookie (sent automatically)</div>
+    <div class="endpoint-detail"><strong>Response:</strong> <code>200</code> &mdash; <code>{ "message": "Token refreshed" }</code> (new <code>token</code> cookie set)</div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/auth/logout</span>
+    </div>
+    <div class="endpoint-desc">Logout and clear authentication cookies.</div>
+    <div class="endpoint-detail"><strong>Auth:</strong> <code>token</code> cookie</div>
+    <div class="endpoint-detail"><strong>Response:</strong> <code>200</code> &mdash; <code>{ "message": "Logged out" }</code></div>
+  </div>
+
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/auth/verify</span>
+    </div>
+    <div class="endpoint-desc">Verify the current access token is valid.</div>
+    <div class="endpoint-detail"><strong>Auth:</strong> <code>token</code> cookie</div>
+    <div class="endpoint-detail"><strong>Response:</strong> <code>200</code> &mdash; <code>{ "valid": true }</code></div>
   </div>
 
   <div class="endpoint">
@@ -781,14 +813,15 @@ docker run -d -p 80:80 --name node-connector node-connector</code></pre>
       <span class="endpoint-path">/auth/profile</span>
     </div>
     <div class="endpoint-desc">Get the authenticated user's profile.</div>
-    <div class="endpoint-detail"><strong>Auth:</strong> <code>Authorization: Bearer &lt;token&gt;</code></div>
+    <div class="endpoint-detail"><strong>Auth:</strong> <code>token</code> cookie</div>
     <div class="endpoint-detail"><strong>Response:</strong> <code>200</code> &mdash; User object (without password)</div>
   </div>
 
-  <h3>Authentication Headers</h3>
+  <h3>Authentication Method</h3>
   <table>
-    <tr><th>Header</th><th>Used By</th><th>Description</th></tr>
-    <tr><td><code>Authorization: Bearer &lt;token&gt;</code></td><td>Frontend</td><td>JWT access token for user endpoints</td></tr>
+    <tr><th>Method</th><th>Used By</th><th>Description</th></tr>
+    <tr><td><code>token</code> cookie (httpOnly)</td><td>Frontend</td><td>JWT access token, sent automatically with every request</td></tr>
+    <tr><td><code>refreshToken</code> cookie (httpOnly)</td><td>Frontend</td><td>Refresh token, scoped to <code>/auth/refresh-token</code> path only</td></tr>
     <tr><td><code>X-Internal-Key: &lt;key&gt;</code></td><td>Scheduler, CLI</td><td>Internal API key for service-to-service calls</td></tr>
   </table>
 </section>
@@ -1040,6 +1073,7 @@ class MyPlugin extends Plugin {
         name: "Param Name",      // Display label
         alias: "param_alias",    // Key in params object
         type: "string",          // "string" | "big_string" | "number" | "boolean" | "select" | "radio"
+        secret: false,           // true = rendered as password field, encrypted at rest
         default: "default value",
         value: undefined
       }
@@ -1076,6 +1110,15 @@ module.exports = MyPlugin;</code></pre>
     <tr><td><code>select</code></td><td>Dropdown menu. Requires <code>options</code> array: <code>[{label, value}, ...]</code></td></tr>
     <tr><td><code>radio</code></td><td>Radio button group. Requires <code>options</code> array: <code>[{label, value}, ...]</code></td></tr>
   </table>
+
+  <h3>Secret Parameters</h3>
+  <p>Add <code>secret: true</code> to any parameter definition to mark it as sensitive. Secret parameters are:</p>
+  <ul>
+    <li>Rendered as <strong>password fields</strong> (masked input) in the node editor</li>
+    <li><strong>Encrypted at rest</strong> using AES-256-GCM before saving to disk</li>
+    <li>Automatically decrypted when the node is loaded for editing or execution</li>
+  </ul>
+  <pre><code>{ name: "Password", alias: "password", type: "string", secret: true, default: "", value: undefined }</code></pre>
 
   <h3>Return Format</h3>
   <p>Every plugin's <code>logic()</code> must return:</p>
@@ -1140,7 +1183,7 @@ module.exports = MyPlugin;</code></pre>
       <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
       <tr><td><code>ssh_host</code></td><td>string</td><td>Server hostname or IP</td></tr>
       <tr><td><code>ssh_username</code></td><td>string</td><td>SSH username</td></tr>
-      <tr><td><code>ssh_password</code></td><td>string</td><td>SSH password</td></tr>
+      <tr><td><code>ssh_password</code></td><td>string <span class="badge badge-red">secret</span></td><td>SSH password (encrypted at rest)</td></tr>
       <tr><td><code>ssh_cmd</code></td><td>string</td><td>Commands to run (comma-separated for multiple)</td></tr>
     </table>
   </div>
@@ -1157,7 +1200,7 @@ module.exports = MyPlugin;</code></pre>
       <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
       <tr><td><code>host</code></td><td>string</td><td>FTP server hostname</td></tr>
       <tr><td><code>username</code></td><td>string</td><td>FTP username</td></tr>
-      <tr><td><code>password</code></td><td>string</td><td>FTP password</td></tr>
+      <tr><td><code>password</code></td><td>string <span class="badge badge-red">secret</span></td><td>FTP password (encrypted at rest)</td></tr>
       <tr><td><code>local_file_path</code></td><td>string</td><td>Path to local file to upload</td></tr>
       <tr><td><code>remote_folder_path</code></td><td>string</td><td>Remote destination folder (default: <code>/</code>)</td></tr>
     </table>
@@ -1266,7 +1309,7 @@ module.exports = MyPlugin;</code></pre>
       <tr><td><code>smtp_host</code></td><td>string</td><td><code>smtp.gmail.com</code></td><td>SMTP server hostname</td></tr>
       <tr><td><code>smtp_port</code></td><td>number</td><td><code>587</code></td><td>SMTP port (587 for TLS, 465 for SSL)</td></tr>
       <tr><td><code>username</code></td><td>string</td><td></td><td>SMTP username</td></tr>
-      <tr><td><code>password</code></td><td>string</td><td></td><td>SMTP password or app password</td></tr>
+      <tr><td><code>password</code></td><td>string <span class="badge badge-red">secret</span></td><td></td><td>SMTP password or app password (encrypted at rest)</td></tr>
       <tr><td><code>from</code></td><td>string</td><td></td><td>Sender email address</td></tr>
       <tr><td><code>to</code></td><td>string</td><td></td><td>Recipient email address</td></tr>
       <tr><td><code>subject</code></td><td>string</td><td></td><td>Email subject</td></tr>
@@ -1350,7 +1393,7 @@ module.exports = MyPlugin;</code></pre>
       <span class="badge badge-red">flow</span>
     </div>
     <div class="plugin-file">api/plugins/if-condition.js</div>
-    <div class="plugin-desc">Evaluate a condition and pass or block downstream execution. If the condition is not met, downstream nodes are skipped (treated as failure).</div>
+    <div class="plugin-desc">Evaluate a condition and pass or block downstream execution. If the condition is not met, the node turns <strong>gray</strong> and downstream execution stops silently &mdash; downstream nodes are not executed or marked as failed.</div>
     <table>
       <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
       <tr><td><code>value</code></td><td>string</td><td></td><td>The value to evaluate (supports <code>{{variable}}</code> syntax)</td></tr>
@@ -1463,6 +1506,7 @@ class MyPlugin extends Plugin {
   paramsDefinition() {
     return [
       { name: "My Param", alias: "my_param", type: "string", default: "", value: undefined },
+      { name: "API Key", alias: "api_key", type: "string", secret: true, default: "", value: undefined },  // encrypted at rest, shown as password field
       {
         name: "Method",
         alias: "method",
@@ -1709,11 +1753,11 @@ async function main() {
 <!-- ════════════════════════════════════════════ -->
 <section id="cli">
   <h2>CLI Tool</h2>
-  <p>Execute sheets manually from the command line.</p>
+  <p>Execute sheets manually from the command line. The <code>INTERNAL_API_KEY</code> environment variable must be set.</p>
 
   <h3>Usage</h3>
   <pre><code># From inside the container
-node cli.js &lt;sheet-uid&gt;
+INTERNAL_API_KEY=your_key node cli.js &lt;sheet-uid&gt;
 
 # From host (via docker exec)
 docker exec node-connector node cli.js &lt;sheet-uid&gt;
@@ -1721,7 +1765,7 @@ docker exec node-connector node cli.js &lt;sheet-uid&gt;
 # From host (via curl)
 curl -X POST http://localhost/api/sheet/execute-batch \
   -H "Content-Type: application/json" \
-  -H "X-Internal-Key: change_me_internal_key" \
+  -H "X-Internal-Key: $INTERNAL_API_KEY" \
   -d '{"sheetUid":"&lt;sheet-uid&gt;"}'</code></pre>
 
   <h3>Output</h3>
@@ -1757,7 +1801,7 @@ Root: Start Node [success]
     <tr><td><strong>Node Edit Modal</strong></td><td>Opened on double-click of a node. Shows the node's icon and title in the header with an "Editing" tag. Contains the parameter form, Save, Execute, and Delete buttons.</td></tr>
     <tr><td><strong>LogModal</strong></td><td>Displays real-time execution logs streamed via SSE.</td></tr>
     <tr><td><strong>HistoryModal</strong></td><td>Shows execution history for the current sheet. Expandable rows with status, trigger type, timestamp, duration, and node count.</td></tr>
-    <tr><td><strong>MessageBox</strong></td><td>Confirmation dialogs (e.g., delete node).</td></tr>
+    <tr><td><strong>MessageBox</strong></td><td>Styled modal dialogs with overlay, type-based icons (info, warning, error, success), and button variants. Used for confirmations, alerts, and notifications. Replaces native <code>alert()</code> and <code>confirm()</code>.</td></tr>
   </table>
 
   <h3>Sheet Editor Layout</h3>
@@ -1839,16 +1883,21 @@ Root: Start Node [success]
     <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
     <tr><td><code>PORT</code></td><td><code>3001</code></td><td>API server port (internal)</td></tr>
     <tr><td><code>DB_PATH</code></td><td><code>./db/sheets.db</code></td><td>SQLite database file path</td></tr>
-    <tr><td><code>JWT_SECRET</code></td><td><code>change_me_jwt_secret</code></td><td>Secret for signing JWT access tokens</td></tr>
-    <tr><td><code>REFRESH_TOKEN_SECRET</code></td><td><code>change_me_refresh_secret</code></td><td>Secret for signing refresh tokens</td></tr>
-    <tr><td><code>INTERNAL_API_KEY</code></td><td><code>change_me_internal_key</code></td><td>Key for scheduler/CLI to API communication</td></tr>
+    <tr><td><code>JWT_SECRET</code></td><td><em>required</em></td><td>Secret for signing JWT access tokens. <strong>Must be set.</strong> In dev, a random key is generated per session if missing.</td></tr>
+    <tr><td><code>REFRESH_TOKEN_SECRET</code></td><td><em>required</em></td><td>Secret for signing refresh tokens. <strong>Must be set.</strong> In dev, a random key is generated per session if missing.</td></tr>
+    <tr><td><code>INTERNAL_API_KEY</code></td><td><em>required</em></td><td>Key for scheduler/CLI to API communication. <strong>Must be set.</strong> In dev, a random key is generated per session if missing.</td></tr>
+    <tr><td><code>ENCRYPTION_KEY</code></td><td><em>required</em></td><td>Key for AES-256-GCM encryption of secret plugin parameters. <strong>Must be set.</strong> In dev, a random key is generated per session if missing.</td></tr>
+    <tr><td><code>CORS_ORIGIN</code></td><td><code>http://localhost:PORT</code></td><td>Allowed CORS origin. Set to your domain in production (e.g. <code>https://example.com</code>)</td></tr>
     <tr><td><code>API_BASE_URL</code></td><td><code>http://127.0.0.1:3001</code></td><td>API URL used by scheduler</td></tr>
     <tr><td><code>LOG_LEVEL</code></td><td><code>info</code></td><td>Logging verbosity</td></tr>
+    <tr><td><code>DATA_DIR</code></td><td><code>/data</code></td><td>Base directory for file-operation plugins. All file paths are confined to this directory to prevent path traversal</td></tr>
   </table>
 
   <div class="info-box warning">
-    <strong>Important:</strong> Change all default secrets before deploying to production. The defaults are only suitable for local development.
+    <strong>Important:</strong> All secret variables (<code>JWT_SECRET</code>, <code>REFRESH_TOKEN_SECRET</code>, <code>INTERNAL_API_KEY</code>, <code>ENCRYPTION_KEY</code>) are <strong>required in production</strong> (<code>NODE_ENV=production</code>). The server will refuse to start if any are missing. In development, random secrets are generated per session with a console warning.
   </div>
+  <p>Generate strong secrets with:</p>
+  <pre><code>node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"</code></pre>
 </section>
 
 <!-- ════════════════════════════════════════════ -->
@@ -1860,16 +1909,78 @@ Root: Start Node [success]
   <h3>Authentication</h3>
   <ul>
     <li><strong>Passwords</strong> &mdash; Hashed with bcrypt (10 rounds)</li>
-    <li><strong>Access Tokens</strong> &mdash; JWT with 15-minute expiry</li>
-    <li><strong>Refresh Tokens</strong> &mdash; Long-lived, stored in DB per user</li>
+    <li><strong>Access Tokens</strong> &mdash; JWT with 15-minute expiry, stored in httpOnly cookies (not accessible via JavaScript)</li>
+    <li><strong>Refresh Tokens</strong> &mdash; JWT with 7-day expiry, stored in DB per user and as httpOnly cookie scoped to <code>/auth/refresh-token</code></li>
+    <li><strong>Cookie Flags</strong> &mdash; <code>httpOnly</code>, <code>secure</code> (production), <code>sameSite=strict</code> to prevent XSS and CSRF</li>
+    <li><strong>Token Revocation</strong> &mdash; On logout or password change, the access token is immediately blacklisted (in-memory). Blacklisted tokens are rejected by all authenticated endpoints. Expired entries are auto-cleaned every 5 minutes</li>
     <li><strong>Internal Key</strong> &mdash; Separate auth for service-to-service calls</li>
+    <li><strong>No localStorage</strong> &mdash; Tokens are never stored in localStorage or exposed to client-side JavaScript</li>
   </ul>
 
   <h3>HTTP Security</h3>
   <ul>
+    <li><strong>HTTPS Enforcement</strong> &mdash; In production (<code>NODE_ENV=production</code>), all HTTP requests are redirected to HTTPS via <code>301</code>. Uses <code>X-Forwarded-Proto</code> from the reverse proxy. Disabled in development so HTTP works normally</li>
     <li><strong>Helmet</strong> &mdash; Security headers (XSS protection, no sniff, etc.)</li>
-    <li><strong>CORS</strong> &mdash; Cross-origin requests enabled</li>
+    <li><strong>CORS</strong> &mdash; Restricted to a single allowed origin via <code>CORS_ORIGIN</code> env var (defaults to <code>http://localhost:PORT</code>). Credentials (cookies) are included</li>
+    <li><strong>CSRF Protection</strong> &mdash; Double-submit cookie pattern. On login, a <code>csrfToken</code> cookie (readable by JavaScript) is set. The frontend sends it as the <code>X-CSRF-Token</code> header on every state-changing request (POST/PUT/DELETE). The server rejects requests where the header doesn't match the cookie. Login, register, and refresh-token routes are exempt. Internal API key routes are also exempt</li>
     <li><strong>Nginx</strong> &mdash; Reverse proxy, no direct API exposure</li>
+  </ul>
+
+  <h3>Rate Limiting</h3>
+  <table>
+    <tr><th>Scope</th><th>Window</th><th>Max Requests</th><th>Description</th></tr>
+    <tr><td>Global (all routes)</td><td>15 minutes</td><td>100</td><td>General protection against abuse</td></tr>
+    <tr><td><code>/auth/login</code></td><td>15 minutes</td><td>10</td><td>Brute-force login protection</td></tr>
+    <tr><td><code>/auth/register</code></td><td>1 hour</td><td>5</td><td>Prevents mass account creation</td></tr>
+  </table>
+  <p>Rate limit status is returned via standard headers (<code>RateLimit-Policy</code>, <code>RateLimit-Remaining</code>, <code>RateLimit-Reset</code>). When exceeded, the API responds with <code>429 Too Many Requests</code>.</p>
+
+  <h3>Credential Encryption</h3>
+  <ul>
+    <li><strong>Secret Parameters</strong> &mdash; Plugin params marked with <code>secret: true</code> are encrypted at rest using AES-256-GCM</li>
+    <li><strong>Encryption Key</strong> &mdash; Derived from <code>ENCRYPTION_KEY</code> env var via SHA-256. Must be changed in production</li>
+    <li><strong>Storage</strong> &mdash; Encrypted values are stored as <code>{ __encrypted, data, iv, tag }</code> objects in sheet JSON files</li>
+    <li><strong>Backward Compatible</strong> &mdash; Existing plaintext values are automatically encrypted on the next save</li>
+    <li><strong>UI</strong> &mdash; Secret params render as masked password fields in the node editor</li>
+  </ul>
+
+  <h3>SSH Command Safety</h3>
+  <ul>
+    <li><strong>Command Sanitization</strong> &mdash; Null bytes and non-printable control characters are stripped from SSH commands before execution, preventing command truncation and injection via control sequences</li>
+    <li><strong>Connection Timeout</strong> &mdash; SSH connections time out after 10 seconds (<code>readyTimeout</code>) to prevent hangs on unreachable hosts</li>
+    <li><strong>Per-Command Timeout</strong> &mdash; Each command times out after 30 seconds, preventing runaway processes on the remote server</li>
+    <li><strong>Input Validation</strong> &mdash; Empty commands are filtered out, and required fields (host, username, command) are validated before any connection attempt</li>
+  </ul>
+
+  <h3>Custom Script Sandboxing</h3>
+  <ul>
+    <li><strong>Module Restrictions</strong> &mdash; Custom scripts cannot <code>require()</code> dangerous modules: <code>child_process</code>, <code>cluster</code>, <code>worker_threads</code> (process spawning) and <code>net</code>, <code>dgram</code>, <code>tls</code>, <code>http</code>, <code>http2</code>, <code>https</code>, <code>dns</code> (network access). Allowed modules include <code>fs</code>, <code>path</code>, <code>crypto</code>, <code>os</code>, etc.</li>
+    <li><strong>Environment Isolation</strong> &mdash; Child processes run with a minimal environment (<code>PATH</code>, <code>HOME</code>, <code>TMPDIR</code>, <code>NODE_ENV</code> only). Secrets like <code>JWT_SECRET</code>, <code>ENCRYPTION_KEY</code>, and <code>INTERNAL_API_KEY</code> are not accessible</li>
+    <li><strong>Execution Timeout</strong> &mdash; Scripts are killed after 30 seconds to prevent infinite loops or resource exhaustion</li>
+    <li><strong>No Shell Injection</strong> &mdash; Uses <code>execFile()</code> instead of <code>exec()</code>, bypassing shell interpretation entirely</li>
+  </ul>
+
+  <h3>Secure Temp Files</h3>
+  <ul>
+    <li><strong>Unpredictable Names</strong> &mdash; Temp script files use <code>crypto.randomBytes(16)</code> for filenames, preventing path-guessing attacks</li>
+    <li><strong>Private Directory</strong> &mdash; Each execution creates an isolated temp directory via <code>fs.mkdtempSync()</code> under <code>os.tmpdir()</code>, eliminating race conditions</li>
+    <li><strong>Restrictive Permissions</strong> &mdash; Temp files are written with mode <code>0600</code> (owner-only read/write), preventing other users from reading script contents</li>
+    <li><strong>Cleanup</strong> &mdash; The entire temp directory is recursively removed after execution completes</li>
+  </ul>
+
+  <h3>Path Traversal Protection</h3>
+  <ul>
+    <li><strong>Sandboxed Directory</strong> &mdash; All file-operation plugins (Read/Write File, Rename File, Download File, Zip) confine paths to a base directory (<code>DATA_DIR</code> env var, defaults to <code>/data</code>)</li>
+    <li><strong>Traversal Denied</strong> &mdash; Paths containing <code>..</code> or other sequences that resolve outside the base directory are rejected with an error before any I/O occurs</li>
+    <li><strong>Affected Plugins</strong> &mdash; ReadWriteFile, RenameFile, DownloadFile, Zip, DatabaseQuery</li>
+  </ul>
+
+  <h3>SQL Injection Protection</h3>
+  <ul>
+    <li><strong>Identifier Validation</strong> &mdash; All table names, column names, and column types are validated against a strict whitelist regex (<code>/^[a-zA-Z_][a-zA-Z0-9_]*$/</code>) before use in SQL queries. Invalid identifiers are rejected with an error</li>
+    <li><strong>Quoted Identifiers</strong> &mdash; All validated identifiers are double-quoted in SQL statements to prevent injection even if the regex were bypassed</li>
+    <li><strong>Parameterized Values</strong> &mdash; All user-supplied values (column values, default values, LIMIT) use parameterized queries (<code>?</code> placeholders) instead of string interpolation</li>
+    <li><strong>Database Query Plugin</strong> &mdash; The Database Query plugin confines database paths to the <code>DATA_DIR</code> sandbox via <code>safePath()</code>, and opens databases in read-only mode for SELECT/PRAGMA/EXPLAIN queries</li>
   </ul>
 
   <h3>Input Validation</h3>
@@ -1878,6 +1989,50 @@ Root: Start Node [success]
     <li>Cron schedule validated with <code>node-cron</code></li>
     <li>Custom scripts validated for <code>async function main()</code> via Babel parser</li>
     <li>Required fields checked on all mutation endpoints</li>
+    <li><strong>Node Params</strong> &mdash; All node create/update endpoints validate <code>params</code> arrays. Each param is sanitized to only allow known properties (<code>name</code>, <code>alias</code>, <code>type</code>, <code>value</code>, <code>default</code>, <code>secret</code>, <code>options</code>). Param <code>type</code> is validated against a whitelist (<code>string</code>, <code>big_string</code>, <code>number</code>, <code>boolean</code>, <code>select</code>, <code>radio</code>). Node <code>position</code>, <code>inputs</code>, and <code>outputs</code> fields are also type-checked</li>
+  </ul>
+
+  <h3>Password Policy</h3>
+  <ul>
+    <li><strong>Minimum Length</strong> &mdash; Passwords must be at least 8 characters</li>
+    <li><strong>Complexity</strong> &mdash; Must contain at least one lowercase letter, one uppercase letter, and one digit</li>
+    <li><strong>Common Password Check</strong> &mdash; Rejects passwords found in a built-in blocklist of commonly used passwords (e.g. <code>password</code>, <code>123456</code>, <code>admin123</code>)</li>
+    <li><strong>Enforced On</strong> &mdash; Registration (<code>POST /auth/register</code>) and password change (<code>PUT /auth/change-password</code>)</li>
+  </ul>
+
+  <h3>Content Security Policy</h3>
+  <ul>
+    <li><strong>default-src</strong> &mdash; <code>'self'</code> &mdash; only allow resources from the same origin by default</li>
+    <li><strong>script-src</strong> &mdash; <code>'self'</code> &mdash; blocks inline scripts and external script sources</li>
+    <li><strong>style-src</strong> &mdash; <code>'self' 'unsafe-inline'</code> &mdash; allows same-origin and inline styles (required by React)</li>
+    <li><strong>img-src</strong> &mdash; <code>'self' data:</code> &mdash; allows same-origin images and data URIs (used for plugin icons)</li>
+    <li><strong>object-src</strong> &mdash; <code>'none'</code> &mdash; blocks Flash/Java embeds</li>
+    <li><strong>frame-ancestors</strong> &mdash; <code>'none'</code> &mdash; prevents the app from being embedded in iframes (clickjacking protection)</li>
+    <li>Additional headers (<code>X-Content-Type-Options</code>, <code>X-Frame-Options</code>, <code>Strict-Transport-Security</code>, etc.) are set automatically by <code>helmet</code></li>
+  </ul>
+
+  <h3>Error Message Sanitization</h3>
+  <ul>
+    <li><strong>Generic Error Responses</strong> &mdash; User-facing API endpoints return generic error messages (e.g. "Registration failed", "Password change failed") instead of raw internal error details</li>
+    <li><strong>Server-Side Logging</strong> &mdash; Full error details are logged server-side via <code>console.error</code> for debugging, but never sent to clients</li>
+    <li><strong>Affected Endpoints</strong> &mdash; <code>POST /auth/register</code>, <code>PUT /auth/change-password</code>, <code>GET /sheet/node/execute</code> (SSE)</li>
+    <li><strong>Internal Endpoints</strong> &mdash; Internal-only endpoints (behind <code>X-Internal-Key</code> authentication) retain detailed error messages for service-to-service debugging</li>
+  </ul>
+
+  <h3>Client-Side Form Validation</h3>
+  <ul>
+    <li><strong>Register Form</strong> &mdash; Validates username (minimum 3 characters), password policy (minimum 8 characters, must include lowercase, uppercase, and digit), and password confirmation match before submitting</li>
+    <li><strong>Change Password Form</strong> &mdash; Validates new password against the same policy rules and confirms match before submitting</li>
+    <li><strong>Shared Utility</strong> &mdash; Both forms use a shared <code>validate-password.js</code> utility that mirrors the server-side password policy, providing instant feedback without a round-trip</li>
+  </ul>
+
+  <h3>Audit Logging</h3>
+  <ul>
+    <li><strong>Storage</strong> &mdash; All audit events are persisted to a dedicated <code>audit_log</code> SQLite table with timestamp, event type, user ID, username, IP address, and details</li>
+    <li><strong>Auth Events</strong> &mdash; <code>login_success</code>, <code>login_failure</code> (with reason: unknown user / wrong password), <code>register</code>, <code>logout</code>, <code>password_change</code>, <code>token_refresh</code></li>
+    <li><strong>Sheet Events</strong> &mdash; <code>sheet_create</code>, <code>sheet_update</code>, <code>sheet_delete</code> (node deletion), <code>sheet_settings_update</code>, <code>sheet_execute</code>, <code>webhook_trigger</code></li>
+    <li><strong>Non-Blocking</strong> &mdash; Audit log writes are fire-and-forget; failures are logged to <code>console.error</code> but never block the request</li>
+    <li><strong>Event Whitelist</strong> &mdash; Only predefined event types are accepted; unknown events are rejected to prevent log injection</li>
   </ul>
 </section>
 
