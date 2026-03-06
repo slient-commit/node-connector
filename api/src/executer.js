@@ -57,6 +57,15 @@ class Executer {
     // Key: node ID, Value: { remaining: number, resolve: Function }
     const pendingNodes = new Map();
 
+    // Mutable target for where new promises get pushed.
+    // Points to allPromises normally, but switches to a per-iteration
+    // array during loop execution.
+    let promisesTarget = null;
+
+    // Tracks whether we're inside a loop execution.
+    // When > 0, LoopEnd nodes won't notify their downstream nodes.
+    let loopDepth = 0;
+
     function notifyOutputNodes(node) {
       for (const outputId of node.node.outputs) {
         const outputNode = nodeMap.get(outputId);
@@ -88,7 +97,7 @@ class Executer {
             promise: readyPromise,
           });
           // Queue execution: wait until all inputs are done, then execute
-          allPromises.push(
+          promisesTarget.push(
             readyPromise.then(() => executeNode(outputNode))
           );
         }
@@ -217,14 +226,170 @@ class Executer {
         executed.add(node.id);
       }
 
-      // Notify downstream nodes (they'll check for failures before running)
-      notifyOutputNodes(node);
+      // If this is a Loop node, handle loop iteration over downstream nodes
+      if (!hasError && node.result?.output?.__isLoop) {
+        await handleLoopNode(node, node.result.output.__items);
+      } else if (!hasError && node.result?.output?.__isLoopEnd && loopDepth > 0) {
+        // Inside a loop — LoopEnd doesn't notify downstream.
+        // The loop handler will trigger post-loop nodes after all iterations.
+      } else {
+        // Notify downstream nodes (they'll check for failures before running)
+        notifyOutputNodes(node);
+      }
 
       return result;
     }
 
+    // BFS to find all transitive downstream node IDs from a given node.
+    // Stops at LoopEnd nodes — they're included in the set but their
+    // outputs are NOT traversed (those belong to the post-loop chain).
+    function getDownstreamNodeIds(startNodeId) {
+      const downstream = new Set();
+      const startNode = nodeMap.get(startNodeId);
+      if (!startNode) return downstream;
+      const queue = [...(startNode.node.outputs || [])];
+      while (queue.length > 0) {
+        const id = queue.shift();
+        if (downstream.has(id)) continue;
+        downstream.add(id);
+        const n = nodeMap.get(id);
+        if (n && n.node.outputs && n.node.className !== "LoopEnd") {
+          queue.push(...n.node.outputs);
+        }
+      }
+      return downstream;
+    }
+
+    // Handle Loop node: re-execute all downstream nodes for each iteration
+    async function handleLoopNode(loopNode, items) {
+      const downstreamIds = getDownstreamNodeIds(loopNode.id);
+      const allIterResults = [];
+
+      loopDepth++;
+
+      for (let i = 0; i < items.length; i++) {
+        // Send iteration progress
+        if (sendProgress)
+          sendProgress({
+            id: loopNode.id,
+            result: {},
+            error: false,
+            message: `Iteration ${i + 1} of ${items.length}`,
+            stage: "executing",
+          });
+
+        // Reset all downstream nodes for this iteration
+        for (const id of downstreamIds) {
+          executed.delete(id);
+          failed.delete(id);
+          pendingNodes.delete(id);
+          const dn = nodeMap.get(id);
+          if (dn) {
+            dn.result = null;
+            dn.isExecuted = false;
+          }
+        }
+
+        // Update loop node's output for this iteration
+        loopNode.result = {
+          status: { error: false, message: `Iteration ${i + 1} of ${items.length}` },
+          output: { item: items[i], index: i, total: items.length },
+        };
+
+        // Create per-iteration promises array and redirect promise target
+        const iterPromises = [];
+        const savedTarget = promisesTarget;
+        promisesTarget = iterPromises;
+
+        // Notify downstream nodes — promises go into iterPromises
+        notifyOutputNodes(loopNode);
+
+        // Satisfy external inputs: for downstream nodes with inputs from
+        // outside the loop, pre-decrement pending counter (already executed)
+        for (const id of downstreamIds) {
+          const pending = pendingNodes.get(id);
+          if (!pending) continue;
+          const dn = nodeMap.get(id);
+          if (!dn) continue;
+          for (const inputId of dn.node.inputs) {
+            if (inputId !== loopNode.id && !downstreamIds.has(inputId) && executed.has(inputId)) {
+              pending.remaining--;
+            }
+          }
+          if (pending.remaining <= 0) {
+            pending.resolve();
+          }
+        }
+
+        // Process all iteration promises
+        let idx = 0;
+        while (idx < iterPromises.length) {
+          try {
+            await iterPromises[idx];
+          } catch (err) {
+            if (sendProgress)
+              sendProgress({
+                id: loopNode.id,
+                result: {},
+                error: true,
+                message: `Loop iteration ${i + 1} error: ${err.message}`,
+                stage: "executing",
+              });
+          }
+          idx++;
+        }
+
+        // Restore promises target
+        promisesTarget = savedTarget;
+
+        // Collect results from downstream nodes for this iteration
+        const iterResult = {};
+        for (const id of downstreamIds) {
+          const dn = nodeMap.get(id);
+          if (dn?.result?.output) {
+            iterResult[dn.node.title || id] = dn.result.output;
+          }
+        }
+        allIterResults.push(iterResult);
+      }
+
+      loopDepth--;
+
+      // Set final aggregated loop output
+      loopNode.result = {
+        status: { error: false, message: `${items.length} iterations completed` },
+        output: { iterations: allIterResults, count: items.length },
+      };
+
+      // Send completion progress
+      if (sendProgress)
+        sendProgress({
+          id: loopNode.id,
+          result: loopNode.result.output,
+          error: false,
+          message: `${items.length} iterations completed`,
+          stage: "executed",
+        });
+
+      // Trigger post-loop nodes: find LoopEnd nodes in the downstream set
+      // and notify their outputs (which are outside the loop body)
+      for (const id of downstreamIds) {
+        const dn = nodeMap.get(id);
+        if (dn && dn.node.className === "LoopEnd" && executed.has(id)) {
+          // Update LoopEnd result with aggregated loop data
+          dn.result = {
+            status: { error: false, message: `${items.length} iterations completed` },
+            output: { iterations: allIterResults, count: items.length },
+          };
+          dn.isExecuted = true;
+          notifyOutputNodes(dn);
+        }
+      }
+    }
+
     const entryPoints = nodes.filter((node) => node.id === nodeId);
     const allPromises = entryPoints.map((entryNode) => executeNode(entryNode));
+    promisesTarget = allPromises;
 
     // Process promises as they grow (children add new ones)
     let i = 0;

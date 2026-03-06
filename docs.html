@@ -530,13 +530,25 @@
 |   +-- index.js             # Server entry point
 |   +-- cli.js               # CLI execution tool
 |   +-- plugins/             # Plugin files (auto-loaded)
-|   |   +-- custom-script.js # Custom Node.js scripts
-|   |   +-- ssh.js           # SSH remote commands
-|   |   +-- ftp.js           # FTP file upload
-|   |   +-- rename-file.js   # Move/rename files
-|   |   +-- linux-terminal.js# Bash commands
-|   |   +-- windows-cmd.js   # CMD commands
-|   |   +-- example.js       # Template plugin
+|   |   +-- custom-script.js  # Custom Node.js scripts
+|   |   +-- ssh.js            # SSH remote commands
+|   |   +-- ftp.js            # FTP file upload
+|   |   +-- http-request.js   # HTTP/REST API calls
+|   |   +-- download-file.js  # Download files from URLs
+|   |   +-- send-email.js     # Send emails via SMTP
+|   |   +-- read-write-file.js# Read/write/append files
+|   |   +-- rename-file.js    # Move/rename files
+|   |   +-- zip.js            # Zip/unzip archives
+|   |   +-- json-transform.js # Transform JSON data
+|   |   +-- database-query.js # SQLite database queries
+|   |   +-- if-condition.js   # Conditional branching
+|   |   +-- loop.js           # Loop over downstream nodes
+|   |   +-- loop-end.js       # Loop body boundary marker
+|   |   +-- delay.js          # Wait/delay timer
+|   |   +-- linux-terminal.js # Bash commands
+|   |   +-- windows-cmd.js    # CMD commands
+|   |   +-- powershell.js     # PowerShell scripts
+|   |   +-- example.js        # Template plugin
 |   +-- db/                  # SQLite database
 |   +-- sheets/              # Sheet JSON files
 |   +-- src/
@@ -1200,6 +1212,211 @@ module.exports = MyPlugin;</code></pre>
       <tr><td><code>timeout</code></td><td>number</td><td><code>30000</code></td><td>Maximum execution time in milliseconds</td></tr>
     </table>
     <p><strong>Output:</strong> <code>{ result: "stdout content", exitCode: 0 }</code> &mdash; If stdout is valid JSON, it is parsed into the output object.</p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">🌐</span>
+      <span class="plugin-name">HTTP Request</span>
+      <span class="badge badge-blue">network</span>
+    </div>
+    <div class="plugin-file">api/plugins/http-request.js</div>
+    <div class="plugin-desc">Make HTTP/REST API calls (GET, POST, PUT, DELETE) with custom headers, body, and timeout. Automatically parses JSON responses.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>url</code></td><td>string</td><td><code>https://httpbin.org/get</code></td><td>The URL to request</td></tr>
+      <tr><td><code>method</code></td><td>string</td><td><code>GET</code></td><td>HTTP method: GET, POST, PUT, DELETE</td></tr>
+      <tr><td><code>headers</code></td><td>big_string</td><td><code>{"Content-Type": "application/json"}</code></td><td>Request headers as JSON</td></tr>
+      <tr><td><code>body</code></td><td>big_string</td><td></td><td>Request body (for POST/PUT)</td></tr>
+      <tr><td><code>timeout</code></td><td>number</td><td><code>30000</code></td><td>Timeout in milliseconds</td></tr>
+    </table>
+    <p><strong>Output:</strong> <code>{ statusCode, statusText, body }</code></p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">⬇️</span>
+      <span class="plugin-name">Download File</span>
+      <span class="badge badge-blue">network</span>
+      <span class="badge badge-green">io</span>
+    </div>
+    <div class="plugin-file">api/plugins/download-file.js</div>
+    <div class="plugin-desc">Download a file from a URL and save it to the local filesystem.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>url</code></td><td>string</td><td></td><td>URL of the file to download</td></tr>
+      <tr><td><code>destination</code></td><td>string</td><td></td><td>Local path to save the file</td></tr>
+      <tr><td><code>timeout</code></td><td>number</td><td><code>60000</code></td><td>Timeout in milliseconds</td></tr>
+    </table>
+    <p><strong>Output:</strong> <code>{ path, size, statusCode, contentType }</code></p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">✉️</span>
+      <span class="plugin-name">Send Email</span>
+      <span class="badge badge-yellow">notification</span>
+    </div>
+    <div class="plugin-file">api/plugins/send-email.js</div>
+    <div class="plugin-desc">Send emails via SMTP. Supports plain text and HTML bodies. Requires <code>nodemailer</code>: run <code>npm install nodemailer</code> in <code>api/</code>.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>smtp_host</code></td><td>string</td><td><code>smtp.gmail.com</code></td><td>SMTP server hostname</td></tr>
+      <tr><td><code>smtp_port</code></td><td>number</td><td><code>587</code></td><td>SMTP port (587 for TLS, 465 for SSL)</td></tr>
+      <tr><td><code>username</code></td><td>string</td><td></td><td>SMTP username</td></tr>
+      <tr><td><code>password</code></td><td>string</td><td></td><td>SMTP password or app password</td></tr>
+      <tr><td><code>from</code></td><td>string</td><td></td><td>Sender email address</td></tr>
+      <tr><td><code>to</code></td><td>string</td><td></td><td>Recipient email address</td></tr>
+      <tr><td><code>subject</code></td><td>string</td><td></td><td>Email subject</td></tr>
+      <tr><td><code>body</code></td><td>big_string</td><td></td><td>Email body content</td></tr>
+      <tr><td><code>is_html</code></td><td>boolean</td><td><code>false</code></td><td>Send body as HTML</td></tr>
+    </table>
+    <p><strong>Output:</strong> <code>{ messageId, response }</code></p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">📄</span>
+      <span class="plugin-name">Read/Write File</span>
+      <span class="badge badge-green">io</span>
+    </div>
+    <div class="plugin-file">api/plugins/read-write-file.js</div>
+    <div class="plugin-desc">Read, write, or append content to files on the filesystem. Automatically creates directories for write operations.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>operation</code></td><td>string</td><td><code>read</code></td><td>Operation: <code>read</code>, <code>write</code>, or <code>append</code></td></tr>
+      <tr><td><code>file_path</code></td><td>string</td><td></td><td>Path to the file</td></tr>
+      <tr><td><code>content</code></td><td>big_string</td><td></td><td>Content to write/append</td></tr>
+      <tr><td><code>encoding</code></td><td>string</td><td><code>utf-8</code></td><td>File encoding</td></tr>
+    </table>
+    <p><strong>Output (read):</strong> <code>{ content, size, path }</code> | <strong>Output (write):</strong> <code>{ path, size }</code></p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">📦</span>
+      <span class="plugin-name">Zip / Unzip</span>
+      <span class="badge badge-green">io</span>
+    </div>
+    <div class="plugin-file">api/plugins/zip.js</div>
+    <div class="plugin-desc">Compress files/folders into ZIP archives or extract them. Requires <code>adm-zip</code>: run <code>npm install adm-zip</code> in <code>api/</code>.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>operation</code></td><td>string</td><td><code>zip</code></td><td>Operation: <code>zip</code> or <code>unzip</code></td></tr>
+      <tr><td><code>source</code></td><td>string</td><td></td><td>Source file or folder path</td></tr>
+      <tr><td><code>destination</code></td><td>string</td><td></td><td>Destination path for the archive or extraction folder</td></tr>
+    </table>
+    <p><strong>Output (zip):</strong> <code>{ path, size }</code> | <strong>Output (unzip):</strong> <code>{ path, entries }</code></p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">🔄</span>
+      <span class="plugin-name">JSON Transform</span>
+      <span class="badge badge-purple">data</span>
+    </div>
+    <div class="plugin-file">api/plugins/json-transform.js</div>
+    <div class="plugin-desc">Parse, transform, and reshape JSON data using JavaScript expressions. The <code>input</code> variable contains data from previous nodes.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>transform</code></td><td>big_string</td><td><code>return input;</code></td><td>JavaScript code that receives <code>input</code> and returns transformed data</td></tr>
+    </table>
+    <p><strong>Example:</strong> <code>return { name: input.first + " " + input.last, count: input.items.length };</code></p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">🗄️</span>
+      <span class="plugin-name">Database Query</span>
+      <span class="badge badge-purple">data</span>
+    </div>
+    <div class="plugin-file">api/plugins/database-query.js</div>
+    <div class="plugin-desc">Execute SQL queries against a SQLite database. Requires <code>better-sqlite3</code>: run <code>npm install better-sqlite3</code> in <code>api/</code>.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>db_path</code></td><td>string</td><td></td><td>Path to the SQLite database file</td></tr>
+      <tr><td><code>query</code></td><td>big_string</td><td><code>SELECT 1 AS result</code></td><td>SQL query to execute</td></tr>
+      <tr><td><code>params</code></td><td>big_string</td><td><code>[]</code></td><td>Query parameters as a JSON array</td></tr>
+    </table>
+    <p><strong>Output (SELECT):</strong> <code>{ rows: [...], count }</code> | <strong>Output (INSERT/UPDATE/DELETE):</strong> <code>{ changes, lastInsertRowid }</code></p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">🔀</span>
+      <span class="plugin-name">If Condition</span>
+      <span class="badge badge-red">flow</span>
+    </div>
+    <div class="plugin-file">api/plugins/if-condition.js</div>
+    <div class="plugin-desc">Evaluate a condition and pass or block downstream execution. If the condition is not met, downstream nodes are skipped (treated as failure).</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>value</code></td><td>string</td><td></td><td>The value to evaluate (supports <code>{{variable}}</code> syntax)</td></tr>
+      <tr><td><code>operator</code></td><td>string</td><td><code>equals</code></td><td>Operator: <code>equals</code>, <code>not_equals</code>, <code>contains</code>, <code>not_contains</code>, <code>greater_than</code>, <code>less_than</code>, <code>is_empty</code>, <code>is_not_empty</code></td></tr>
+      <tr><td><code>compare_to</code></td><td>string</td><td></td><td>Value to compare against</td></tr>
+    </table>
+    <p><strong>Output:</strong> <code>{ passed, value, operator, compareTo }</code></p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">🔁</span>
+      <span class="plugin-name">Loop</span>
+      <span class="badge badge-red">flow</span>
+    </div>
+    <div class="plugin-file">api/plugins/loop.js</div>
+    <div class="plugin-desc">Re-execute all downstream nodes for each item in a JSON array or a numeric range. Downstream nodes can access <code>{{item}}</code>, <code>{{index}}</code>, and <code>{{total}}</code> via the template variable system.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>items</code></td><td>big_string</td><td></td><td>A JSON array of items to iterate over (e.g. <code>["a","b","c"]</code>)</td></tr>
+      <tr><td><code>count</code></td><td>number</td><td><code>0</code></td><td>Number of iterations if no items provided (creates range 0..N-1)</td></tr>
+    </table>
+    <p><strong>Output:</strong> <code>{ iterations: [...], count }</code> &mdash; aggregated results from all downstream nodes across all iterations.</p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">🔚</span>
+      <span class="plugin-name">Loop End</span>
+      <span class="badge badge-red">flow</span>
+    </div>
+    <div class="plugin-file">api/plugins/loop-end.js</div>
+    <div class="plugin-desc">Marks the end of a loop body. Place this node between the looped nodes and the post-loop nodes. Nodes connected <em>after</em> Loop End run only once when all iterations are complete, and receive the aggregated loop results (<code>{{iterations}}</code>, <code>{{count}}</code>).</div>
+    <p><strong>Parameters:</strong> None</p>
+    <p><strong>Output:</strong> <code>{ iterations: [...], count }</code> &mdash; the aggregated results from the loop, forwarded to post-loop nodes.</p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">⏱️</span>
+      <span class="plugin-name">Delay</span>
+      <span class="badge badge-red">flow</span>
+    </div>
+    <div class="plugin-file">api/plugins/delay.js</div>
+    <div class="plugin-desc">Wait for a specified duration before continuing to the next node. Useful for rate limiting or waiting between API calls.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>duration</code></td><td>number</td><td><code>1000</code></td><td>Duration to wait in milliseconds</td></tr>
+    </table>
+    <p><strong>Output:</strong> <code>{ duration }</code> &mdash; passes through input data unchanged.</p>
+  </div>
+
+  <div class="plugin-card">
+    <div class="plugin-header">
+      <span class="plugin-icon">💠</span>
+      <span class="plugin-name">PowerShell</span>
+      <span class="badge badge-blue">terminal</span>
+      <span class="badge badge-green">windows</span>
+    </div>
+    <div class="plugin-file">api/plugins/powershell.js</div>
+    <div class="plugin-desc">Execute PowerShell scripts. Uses <code>-EncodedCommand</code> for reliable multi-line script support. Uses <code>powershell.exe</code> on Windows, <code>pwsh</code> on Linux.</div>
+    <table>
+      <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr>
+      <tr><td><code>script</code></td><td>big_string</td><td><code>Write-Output "Hello World"</code></td><td>PowerShell script to execute</td></tr>
+      <tr><td><code>working_directory</code></td><td>string</td><td></td><td>Working directory for the script</td></tr>
+      <tr><td><code>timeout</code></td><td>number</td><td><code>30000</code></td><td>Timeout in milliseconds</td></tr>
+    </table>
+    <p><strong>Output:</strong> <code>{ result: "stdout content", exitCode: 0 }</code></p>
   </div>
 
   <div class="plugin-card">

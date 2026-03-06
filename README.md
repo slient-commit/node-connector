@@ -26,9 +26,21 @@ A visual workflow automation platform. Build chains of executable plugins on an 
 | **Custom Script** | `script` | Execute custom Node.js code with `async function main()` |
 | **SSH** | `network` | Run commands on remote servers via SSH |
 | **FTP** | `network` | Upload files to FTP servers |
+| **HTTP Request** | `network` | Make REST API calls (GET, POST, PUT, DELETE) |
+| **Download File** | `network`, `io` | Download a file from a URL to the filesystem |
+| **Send Email** | `notification` | Send emails via SMTP |
+| **Read/Write File** | `io` | Read, write, or append content to files |
 | **Rename File** | `io` | Move or rename files on the filesystem |
+| **Zip / Unzip** | `io` | Compress or extract ZIP archives |
+| **JSON Transform** | `data` | Parse, transform, and reshape JSON data |
+| **Database Query** | `data` | Execute SQL queries against a SQLite database |
+| **If Condition** | `flow` | Evaluate a condition and pass or block execution |
+| **Loop** | `flow` | Re-execute all downstream nodes for each item in a list or count range |
+| **Loop End** | `flow` | Marks the end of a loop body; nodes after this run once with aggregated results |
+| **Delay** | `flow` | Wait for a specified duration before continuing |
 | **Linux Terminal** | `terminal`, `linux` | Execute bash/shell commands |
 | **Windows CMD** | `terminal`, `windows` | Execute CMD commands |
+| **PowerShell** | `terminal`, `windows` | Execute PowerShell scripts |
 
 ## Quick Start
 
@@ -148,9 +160,21 @@ node-connector/
 │   │   ├── custom-script.js
 │   │   ├── ssh.js
 │   │   ├── ftp.js
+│   │   ├── http-request.js
+│   │   ├── download-file.js
+│   │   ├── send-email.js
+│   │   ├── read-write-file.js
 │   │   ├── rename-file.js
+│   │   ├── zip.js
+│   │   ├── json-transform.js
+│   │   ├── database-query.js
+│   │   ├── if-condition.js
+│   │   ├── loop.js
+│   │   ├── loop-end.js
+│   │   ├── delay.js
 │   │   ├── linux-terminal.js
 │   │   ├── windows-cmd.js
+│   │   ├── powershell.js
 │   │   └── example.js
 │   └── src/
 │       ├── routes/             # auth.js, sheet.js

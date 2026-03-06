@@ -136,8 +136,7 @@ dist
 .pnp.*
 api/package-lock.json
 .claude/
-api/db/sheets.db
+api/db/
 api/sheets/
 scheduler/package-lock.json
-api/db/sheets.db
-api/db/sheets.db
+
