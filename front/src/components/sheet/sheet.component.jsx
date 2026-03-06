@@ -14,6 +14,11 @@ export default class SheetComponent extends Component {
       showMessage: false,
       showLogModal: false,
       showHistoryModal: false,
+      showAlert: false,
+      alertMessage: "",
+      alertType: "info",
+      showConfirmDelete: false,
+      confirmDeleteNode: null,
       history: [],
       historyLoading: false,
       logs: [],
@@ -269,7 +274,7 @@ export default class SheetComponent extends Component {
       if (sourceNode.id === targetNode.id) {
         // silently reject
       } else if (this.wouldCreateCycle(sourceNode.id, targetNode.id)) {
-        alert("Cannot connect: this would create a circular dependency.");
+        this.setState({ showAlert: true, alertMessage: "Cannot connect: this would create a circular dependency.", alertType: "warning" });
       } else if (
         (fromType === "output" && toType === "input") ||
         (fromType === "input" && toType === "output")
@@ -640,8 +645,8 @@ export default class SheetComponent extends Component {
     if (target.classList.contains("node")) {
       e.preventDefault();
       const node = target.__node__;
-      if (node && confirm("Delete this node?")) {
-        this.viewport.removeChild(node.group);
+      if (node) {
+        this.setState({ showConfirmDelete: true, confirmDeleteNode: node });
       }
     }
   }
@@ -858,6 +863,18 @@ export default class SheetComponent extends Component {
     this.setState({ showMessage: true });
   };
 
+  handleConfirmDeleteYes = () => {
+    const node = this.state.confirmDeleteNode;
+    if (node) {
+      this.deleteNode(node);
+    }
+    this.setState({ showConfirmDelete: false, confirmDeleteNode: null });
+  };
+
+  handleConfirmDeleteNo = () => {
+    this.setState({ showConfirmDelete: false, confirmDeleteNode: null });
+  };
+
   executeNode() {
     if (this.editedNode) {
       this.api.executeNode(
@@ -877,10 +894,10 @@ export default class SheetComponent extends Component {
               circle.setAttribute("stroke", "#dfd113");
             } else if (update.stage.trim() === "executed") {
               setTimeout(() => {
-                circle.setAttribute(
-                  "stroke",
-                  update.error ? "#9e2121" : "#27d827"
-                );
+                let color = "#27d827"; // green = success
+                if (update.conditionNotMet) color = "#999"; // gray = condition not met
+                else if (update.error) color = "#9e2121"; // red = error
+                circle.setAttribute("stroke", color);
               }, 10);
             }
           }
@@ -911,10 +928,10 @@ export default class SheetComponent extends Component {
           circle.setAttribute("stroke", "#dfd113");
         } else if (update.stage.trim() === "executed") {
           setTimeout(() => {
-            circle.setAttribute(
-              "stroke",
-              update.error ? "#9e2121" : "#27d827"
-            );
+            let color = "#27d827"; // green = success
+            if (update.conditionNotMet) color = "#999"; // gray = condition not met
+            else if (update.error) color = "#9e2121"; // red = error
+            circle.setAttribute("stroke", color);
           }, 10);
         }
       }
@@ -1079,13 +1096,33 @@ export default class SheetComponent extends Component {
 
         {this.state.showMessage && (
           <MessageBox
-            message="Are you sure you want to proceed?"
+            message="Are you sure you want to delete this node?"
             type="warning"
             buttons={[
-              { label: "Yes", onClick: this.handleDeleteYes },
-              { label: "No", onClick: this.handleDeleteNo },
+              { label: "Delete", onClick: this.handleDeleteYes, variant: "danger" },
+              { label: "Cancel", onClick: this.handleDeleteNo, variant: "default" },
             ]}
             onClose={() => this.setState({ showMessage: false })}
+          />
+        )}
+
+        {this.state.showAlert && (
+          <MessageBox
+            message={this.state.alertMessage}
+            type={this.state.alertType}
+            onClose={() => this.setState({ showAlert: false })}
+          />
+        )}
+
+        {this.state.showConfirmDelete && (
+          <MessageBox
+            message="Delete this node?"
+            type="warning"
+            buttons={[
+              { label: "Delete", onClick: this.handleConfirmDeleteYes, variant: "danger" },
+              { label: "Cancel", onClick: this.handleConfirmDeleteNo, variant: "default" },
+            ]}
+            onClose={this.handleConfirmDeleteNo}
           />
         )}
       </div>

@@ -195,6 +195,7 @@ class Executer {
               id: node.id,
               result: result.output,
               error: hasError,
+              conditionNotMet: result.status.conditionNotMet || false,
               message: result.status.message,
               stage: "executed",
             });
@@ -218,6 +219,12 @@ class Executer {
             message: `Error while executing node: ${err.message}`,
             stage: "executed",
           });
+      }
+
+      // Condition not met — stop this path silently, don't propagate
+      if (result.status && result.status.conditionNotMet) {
+        executed.add(node.id);
+        return result;
       }
 
       if (hasError) {

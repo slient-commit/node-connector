@@ -77,7 +77,7 @@ class IfCondition extends Plugin {
 
     if (!passed) {
       return {
-        status: { error: true, message: "Condition not met" },
+        status: { error: true, conditionNotMet: true, message: "Condition not met" },
         output: { passed, value, operator, compareTo },
       };
     }
