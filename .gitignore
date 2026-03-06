@@ -134,9 +134,8 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
-api/package-lock.json
 .claude/
 api/db/
 api/sheets/
-scheduler/package-lock.json
-
+package-lock.json
+build/
