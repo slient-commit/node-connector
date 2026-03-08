@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const path = require("path");
+const { TextDecoder } = require("util");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const sheetUid = process.argv[2];
