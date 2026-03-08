@@ -111,8 +111,14 @@ class SQLiteManager {
         if (!db) resolve([]);
         let query = `SELECT * FROM "${table_name}" WHERE "${column.name}" = ?`;
         if (orderBy) {
-          assertIdentifier(orderBy, "orderBy column");
-          query += ` ORDER BY "${orderBy}"`;
+          const parts = orderBy.trim().split(/\s+/);
+          const col = parts[0];
+          const dir = parts[1] ? parts[1].toUpperCase() : null;
+          assertIdentifier(col, "orderBy column");
+          if (dir && dir !== "ASC" && dir !== "DESC") {
+            throw new Error(`Invalid ORDER BY direction: "${dir}"`);
+          }
+          query += ` ORDER BY "${col}"${dir ? " " + dir : ""}`;
         }
         if (limit) {
           const parsedLimit = parseInt(limit, 10);

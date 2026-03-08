@@ -78,11 +78,9 @@ export default class RegisterComponent extends Component {
             <button className="register-button" type="submit">Register</button>
             {this.state.error && <p id="error-message">{this.state.error}</p>}
           </form>
-          <p style={{ marginTop: "15px", fontSize: "14px" }}>
+          <p>
             Already have an account?
-            <a href="/login" style={{ color: "#00ffcc", textDecoration: "none" }}>
-              {" "}Login here
-            </a>
+            <a href="/login"> Login here</a>
           </p>
         </div>
       </div>

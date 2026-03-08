@@ -311,6 +311,8 @@ export default class ListComponent extends Component {
 
                 {settingsTriggerType === "terminal" && (
                   <div className="terminal-cmd">
+                    <label>Command:</label>
+                    <code>node api/cli.js {this.state.settingsSheet?.uid}</code>
                     <label>Docker exec:</label>
                     <code>docker exec node-connector node api/cli.js {this.state.settingsSheet?.uid}</code>
                     <label>Or with curl:</label>

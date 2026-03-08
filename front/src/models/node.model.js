@@ -138,11 +138,24 @@ export default class Node {
     }
     this.group.appendChild(this.iconEl);
 
-    // Title (to the right of icon)
+    // ClipPath for title text (prevents overflow beyond card boundary)
+    const clipId = `clip-title-${this.id}`;
+    const clipPath = this.createSVGElement("clipPath", { id: clipId });
+    this.titleClipRect = this.createSVGElement("rect", {
+      x: left + 50,
+      y: top + this.headerHeight,
+      width: this.cardWidth - 58,
+      height: this.cardHeight - this.headerHeight,
+    });
+    clipPath.appendChild(this.titleClipRect);
+    this.group.appendChild(clipPath);
+
+    // Title (to the right of icon, clipped to card bounds)
     this.titleText = this.createSVGElement("text", {
       x: left + 52,
       y: bodyCenter + 5,
       class: "node-title",
+      "clip-path": `url(#${clipId})`,
     });
     this.titleText.textContent = this.title;
 
@@ -259,6 +272,10 @@ export default class Node {
     // Status bar
     this.statusBar.setAttribute("x", left);
     this.statusBar.setAttribute("y", top + this.headerHeight);
+
+    // Title clip rect
+    this.titleClipRect.setAttribute("x", left + 50);
+    this.titleClipRect.setAttribute("y", top + this.headerHeight);
 
     // Icon
     if (this.iconBase64) {

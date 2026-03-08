@@ -105,9 +105,16 @@ path.connection:hover {
   border-color: #43a047;
 }
 
-.play-all-btn:hover {
+.play-all-btn:hover:not(:disabled) {
   background: #43a047;
   border-color: #388e3c;
+}
+
+.play-all-btn:disabled {
+  background: #a5d6a7;
+  border-color: #a5d6a7;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .history-btn {
@@ -600,12 +607,18 @@ path.connection:hover {
   margin: 0;
 }
 
-.execute-button:hover {
+.execute-button:hover:not(:disabled) {
   background: #15803d;
 }
 
-.execute-button:active {
+.execute-button:active:not(:disabled) {
   transform: scale(0.97);
+}
+
+.execute-button:disabled {
+  background: #86efac;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .execute-button i {

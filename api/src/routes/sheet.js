@@ -389,8 +389,21 @@ router.post(
       return res.json({ message: "no root nodes found", results: [] });
     }
 
+    // Stream progress via SSE
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+
     const startTime = Date.now();
     const store = sheets.getNodeStore(sheet);
+
+    const sendProgress = (data) => {
+      // Enrich with node title for CLI display
+      const node = store.find((n) => n.id === data.id);
+      if (node) data.title = node.node.title;
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
     const results = [];
 
     for (const rootNode of rootNodes) {
@@ -399,7 +412,7 @@ router.post(
           store,
           rootNode.id,
           "./../plugins",
-          null,
+          sendProgress,
           null
         );
 
@@ -444,7 +457,9 @@ router.post(
       resultsSummary: results,
     });
 
-    res.json({ sheetUid, sheetName: sheet.name, results });
+    // Send final summary and close
+    sendProgress({ id: "batch-complete", sheetUid, sheetName: sheet.name, results });
+    res.end();
   }
 );
 

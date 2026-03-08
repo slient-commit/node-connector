@@ -46,6 +46,13 @@ class WindowsCmd extends Plugin {
         default: 30000,
         value: undefined,
       },
+      {
+        name: "Ignore Timeout",
+        alias: "ignore_timeout",
+        type: "boolean",
+        default: false,
+        value: undefined,
+      },
     ];
   }
 
@@ -60,7 +67,7 @@ class WindowsCmd extends Plugin {
 
     const isWindows = os.platform() === "win32";
     const cwd = params.working_directory || (isWindows ? process.cwd() : "/data");
-    const timeout = parseInt(params.timeout, 10) || 30000;
+    const timeout = params.ignore_timeout ? 0 : (parseInt(params.timeout, 10) || 30000);
     const shell = isWindows ? "cmd.exe" : "/bin/bash";
 
     // Join multi-line commands with && so they run sequentially
@@ -74,7 +81,7 @@ class WindowsCmd extends Plugin {
     this.log("Executing: " + command);
 
     const result = await new Promise((resolve) => {
-      exec(
+      const child = exec(
         command,
         { cwd, timeout, shell },
         (err, stdout, stderr) => {
@@ -95,11 +102,15 @@ class WindowsCmd extends Plugin {
           }
         }
       );
+      child.stdout.on("data", (data) => {
+        this.log(data.toString().trim());
+      });
+      child.stderr.on("data", (data) => {
+        this.log(data.toString().trim(), "error");
+      });
     });
 
     this.log("Exit code: " + result.exitCode);
-    if (result.stdout) this.log("stdout: " + result.stdout.trim());
-    if (result.stderr) this.log("stderr: " + result.stderr.trim());
 
     // Try to parse stdout as JSON, otherwise return as string
     let output;

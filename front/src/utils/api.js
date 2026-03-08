@@ -39,10 +39,13 @@ class API {
 
       let response = await fetch(this.baseURL + url, config);
 
-      // If token expired, try refresh (skip for auth endpoints to avoid loops)
-      if (response.status === 401 && !url.startsWith("/auth/")) {
+      // If token expired (401) or CSRF token expired/mismatch (403), try refresh
+      // Skip for auth endpoints to avoid loops
+      if ((response.status === 401 || response.status === 403) && !url.startsWith("/auth/")) {
         try {
           await this.handleRefreshToken();
+          // Re-read CSRF token after refresh (server sets a new one)
+          config.headers["X-CSRF-Token"] = this._getCsrfToken();
           response = await fetch(this.baseURL + url, config);
         } catch (err) {
           console.error("Auth error:", err);
@@ -106,7 +109,7 @@ class API {
     return this.fetch(url, { ...options, method: "DELETE" });
   }
 
-  async sse(url, queries, callback = undefined) {
+  sse(url, queries, callback = undefined) {
     let query = "";
     queries.forEach((q) => {
       query += `&${q.name}=${q.value}`;
@@ -124,6 +127,8 @@ class API {
       console.error("EventSource failed:", error);
       eventSource.close();
     };
+
+    return eventSource;
   }
 
   async fetchSSE(method, url, body, options, callback = undefined) {

@@ -23,6 +23,7 @@ export default class SheetComponent extends Component {
       history: [],
       historyLoading: false,
       logs: [],
+      isRunning: false,
       plugins: [],
       allTags: [],
       activeTag: null,
@@ -39,6 +40,7 @@ export default class SheetComponent extends Component {
     this.isPanning = false;
     this.startX = 0;
     this.startY = 0;
+    this.activeEventSources = [];
     this.editedNode = null;
     this.tempLine = null;
     this.api = new DataService();
@@ -1017,13 +1019,38 @@ export default class SheetComponent extends Component {
     }
   }
 
+  async saveAll() {
+    for (const node of this.nodes) {
+      await this.api.updateNewNode(this.sheet.uid, {
+        id: node.id,
+        outputs: node.outputs,
+        inputs: node.inputs,
+        position: { x: node.x, y: node.y },
+        title: node.title,
+        params: node.params,
+      });
+    }
+  }
+
   executeAll() {
     const rootNodes = this.nodes.filter((n) => !n.inputs || n.inputs.length === 0);
     if (rootNodes.length === 0) return;
 
-    this.setState({ logs: [], showLogModal: true });
+    this._executionStopped = false;
+    this.setState({ logs: [], showLogModal: true, isRunning: true });
+
+    // Reset all node status colors before re-running
+    this.nodes.forEach((n) => {
+      if (n.statusElement) {
+        n.statusElement.setAttribute("fill", "transparent");
+      }
+    });
+
+    this.activeEventSources = [];
+    let completedCount = 0;
 
     const sseCallback = (data) => {
+      if (this._executionStopped) return;
       const update = JSON.parse(data);
       const node = this.nodes.find((x) => x.id === update.id);
       if (node) {
@@ -1035,6 +1062,7 @@ export default class SheetComponent extends Component {
             node.statusElement.setAttribute("fill", "#dfd113");
           } else if (update.stage.trim() === "executed") {
             setTimeout(() => {
+              if (this._executionStopped) return;
               let color = "#27d827"; // green = success
               if (update.conditionNotMet) color = "#999"; // gray = condition not met
               else if (update.error) color = "#9e2121"; // red = error
@@ -1046,8 +1074,31 @@ export default class SheetComponent extends Component {
     };
 
     rootNodes.forEach((rootNode) => {
-      this.api.executeNode(this.sheet.uid, { id: rootNode.id }, sseCallback);
+      const es = this.api.executeNode(this.sheet.uid, { id: rootNode.id }, sseCallback);
+      es.addEventListener("error", () => {
+        completedCount++;
+        if (completedCount >= rootNodes.length) {
+          this.activeEventSources = [];
+          this.setState({ isRunning: false });
+        }
+      });
+      this.activeEventSources.push(es);
     });
+  }
+
+  stopAll() {
+    this._executionStopped = true;
+    this.activeEventSources.forEach((es) => es.close());
+    this.activeEventSources = [];
+    this.nodes.forEach((n) => {
+      if (n.statusElement) {
+        n.statusElement.setAttribute("fill", "transparent");
+      }
+    });
+    this.setState((prevState) => ({
+      isRunning: false,
+      logs: [...prevState.logs, "--- Execution stopped by user ---"],
+    }));
   }
 
   async loadHistory() {
@@ -1069,11 +1120,14 @@ export default class SheetComponent extends Component {
           <button className="toolbar-btn back-btn" onClick={() => { window.location.href = "/editor"; }}>
             <i className="fa-solid fa-arrow-left"></i> Back
           </button>
-          <button className="toolbar-btn play-all-btn" onClick={this.executeAll}>
+          <button className="toolbar-btn play-all-btn" onClick={this.executeAll} disabled={this.state.isRunning}>
             <i className="fa-solid fa-play"></i> Play All
           </button>
           <button className="toolbar-btn history-btn" onClick={this.loadHistory}>
             <i className="fa-solid fa-clock-rotate-left"></i> History
+          </button>
+          <button className="toolbar-btn save-btn" onClick={() => this.saveAll()}>
+            <i className="fa-solid fa-floppy-disk"></i> Save
           </button>
         </div>
 
@@ -1175,7 +1229,7 @@ export default class SheetComponent extends Component {
               >
                 <i className="fa-solid fa-floppy-disk"></i> Save
               </button>
-              <button className="execute-button" onClick={this.executeNode}>
+              <button className="execute-button" onClick={this.executeNode} disabled={this.state.isRunning}>
                 <i className="fa-solid fa-play"></i> Execute
               </button>
               <button
@@ -1191,6 +1245,8 @@ export default class SheetComponent extends Component {
         {this.state.showLogModal && (
           <LogModal
             logs={this.state.logs}
+            isRunning={this.state.isRunning}
+            onStop={() => this.stopAll()}
             onClose={() => this.setState({ showLogModal: false })}
           />
         )}

@@ -46,6 +46,13 @@ class PowerShell extends Plugin {
         default: 30000,
         value: undefined,
       },
+      {
+        name: "Ignore Timeout",
+        alias: "ignore_timeout",
+        type: "boolean",
+        default: false,
+        value: undefined,
+      },
     ];
   }
 
@@ -57,7 +64,7 @@ class PowerShell extends Plugin {
 
     const isWindows = os.platform() === "win32";
     const cwd = params.working_directory || process.cwd();
-    const timeout = parseInt(params.timeout, 10) || 30000;
+    const timeout = params.ignore_timeout ? 0 : (parseInt(params.timeout, 10) || 30000);
     const shell = isWindows ? "powershell.exe" : "pwsh";
 
     // Use -EncodedCommand with base64 to avoid escaping issues
@@ -67,7 +74,7 @@ class PowerShell extends Plugin {
     this.log("Executing PowerShell script...");
 
     const result = await new Promise((resolve) => {
-      exec(command, { cwd, timeout }, (err, stdout, stderr) => {
+      const child = exec(command, { cwd, timeout }, (err, stdout, stderr) => {
         if (err) {
           resolve({
             status: { error: true, message: err.message },
@@ -84,11 +91,15 @@ class PowerShell extends Plugin {
           });
         }
       });
+      child.stdout.on("data", (data) => {
+        this.log(data.toString().trim());
+      });
+      child.stderr.on("data", (data) => {
+        this.log(data.toString().trim(), "error");
+      });
     });
 
     this.log("Exit code: " + result.exitCode);
-    if (result.stdout) this.log("stdout: " + result.stdout.trim());
-    if (result.stderr) this.log("stderr: " + result.stderr.trim());
 
     let output;
     const trimmed = (result.stdout || "").trim();

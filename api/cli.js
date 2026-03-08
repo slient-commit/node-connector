@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const sheetUid = process.argv[2];
 
@@ -27,26 +29,46 @@ async function execute() {
       body: JSON.stringify({ sheetUid, triggerType: "terminal" }),
     });
 
-    const data = await res.json();
-
     if (!res.ok) {
+      const data = await res.json();
       console.error(`Error (${res.status}):`, data.message || data);
       process.exit(1);
     }
 
-    console.log(`Sheet "${data.sheetName}" executed successfully.\n`);
+    // Read SSE stream for live progress
+    const decoder = new TextDecoder();
+    let buffer = "";
 
-    for (const root of data.results) {
-      console.log(`Root: ${root.rootNodeTitle} [${root.status}]`);
-      if (root.error) {
-        console.error(`  Error: ${root.error}`);
-      }
-      if (root.nodes) {
-        for (const node of root.nodes) {
-          console.log(`  -> ${node.title}:`, JSON.stringify(node.result));
+    for await (const chunk of res.body) {
+      buffer += decoder.decode(chunk, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop(); // keep incomplete line in buffer
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const data = JSON.parse(line.slice(6));
+
+        if (data.id === "batch-complete") {
+          // Final summary
+          console.log(`\nSheet "${data.sheetName}" executed.\n`);
+          for (const root of data.results) {
+            console.log(`Root: ${root.rootNodeTitle} [${root.status}]`);
+            if (root.error) {
+              console.error(`  Error: ${root.error}`);
+            }
+            if (root.nodes) {
+              for (const node of root.nodes) {
+                console.log(`  -> ${node.title}:`, JSON.stringify(node.result));
+              }
+            }
+            console.log();
+          }
+        } else {
+          // Live progress
+          const label = data.title || data.id;
+          console.log(`[${label}] ${data.message}`);
         }
       }
-      console.log();
     }
   } catch (err) {
     console.error("Failed to connect to API:", err.message);

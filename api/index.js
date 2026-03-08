@@ -41,7 +41,7 @@ const ExecutionHistory = require("./src/models/execution-history");
 const AuditLog = require("./src/models/audit-log");
 
 (async () => {
-  dotenv.config();
+  dotenv.config({ path: path.join(__dirname, ".env") });
 
   const app = express();
 

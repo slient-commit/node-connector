@@ -33,12 +33,14 @@
   min-width: 600px;
   max-height: 95vh;
   min-height: 90vh;
-  overflow-y: auto;
+  overflow: hidden;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
   padding: 20px;
   font-family: monospace;
   font-size: 14px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Modal header */
@@ -47,10 +49,33 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
+  flex-shrink: 0;
 }
 
 .log-modal-title {
   color: white;
+}
+
+/* Header actions container */
+.log-modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Stop button */
+.log-modal-stop-button {
+  background-color: #9e2121;
+  border: none;
+  color: #fff;
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.log-modal-stop-button:hover {
+  background-color: #b92a2a;
 }
 
 /* Close button in the modal header */
@@ -68,6 +93,8 @@
   font-size: 14px;
   line-height: 1.5;
   white-space: pre-wrap;
+  overflow-y: auto;
+  flex: 1;
 }
 
 /* Individual log entry */
