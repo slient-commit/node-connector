@@ -490,6 +490,7 @@ path.connection:hover {
 }
 
 .node-modal-input[type="text"],
+.node-modal-input[type="password"],
 .node-modal-input[type="number"] {
   width: 100%;
   padding: 10px 12px;
@@ -504,6 +505,7 @@ path.connection:hover {
 }
 
 .node-modal-input[type="text"]:focus,
+.node-modal-input[type="password"]:focus,
 .node-modal-input[type="number"]:focus {
   outline: none;
   border-color: #2563eb;
