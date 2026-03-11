@@ -79,76 +79,63 @@ class FTPTool extends Plugin {
   }
 
   async logic(params = {}) {
-    let message = "";
-    let size = 0;
-    let error = false;
-    await new Promise(async (resolve) => {
-      const client = new Client();
-      client.ftp.verbose = true; // Optional: enable verbose logging
+    const client = new Client();
 
-      try {
-        this.log("connecting to host: " + params.host);
-        // Connect to the FTP server
-        await client.access({
-          host: params.host,
-          user: params.username,
-          password: params.password,
-          port: 21, // default FTP port
-          secure: false, // set to true if using FTPS
-        });
+    try {
+      this.log("Connecting to host: " + params.host);
+      await client.access({
+        host: params.host,
+        user: params.username,
+        password: params.password,
+        port: 21,
+        secure: false,
+      });
 
-        // Local file to upload
-        const localFilePath = path.resolve(__dirname, params.local_file_path);
+      const localFilePath = path.resolve(__dirname, params.local_file_path);
+      const remoteFilePath = `${
+        params.remote_folder_path
+      }/${this.getFileNameAndExtension(params.local_file_path)}`;
 
-        // Remote path where the file will be uploaded
-        const remoteFilePath = `${
-          params.remote_folder_path
-        }/${this.getFileNameAndExtension(params.local_file_path)}`;
+      const stat = fs.statSync(localFilePath);
+      const totalSize = stat.size;
 
-        this.log(
-          `Prepering file: LOCAL: ${localFilePath}, REMOTE: ${remoteFilePath}`,
-        );
+      this.log(
+        `Uploading: ${localFilePath} -> ${remoteFilePath} (${this.formatBytes(totalSize)})`,
+      );
 
-        const fileStream = fs.createReadStream(localFilePath);
+      // Track upload progress live
+      let lastLoggedPercent = -1;
+      client.trackProgress((info) => {
+        if (totalSize > 0) {
+          const percent = Math.floor((info.bytes / totalSize) * 100);
+          if (percent !== lastLoggedPercent && percent % 5 === 0) {
+            lastLoggedPercent = percent;
+            this.log(`Uploading: ${percent}% (${this.formatBytes(info.bytes)} / ${this.formatBytes(totalSize)})`);
+          }
+        }
+      });
 
-        // Track progress
-        let transferred = 0;
-        const stat = fs.statSync(localFilePath);
-        const totalSize = stat.size;
-        size = stat.size;
-        fileStream.on("data", (chunk) => {
-          transferred += chunk.length;
+      // Upload using file path directly — basic-ftp handles the stream internally
+      await client.uploadFrom(localFilePath, remoteFilePath);
 
-          const percent = ((transferred / totalSize) * 100).toFixed(2);
-          // this.log(`⬆️ Uploading: ${percent}% complete\r`);
-        });
+      // Stop tracking after upload
+      client.trackProgress();
 
-        fileStream.on("end", () => {
-          this.log("✅ File upload completed.");
-          resolve();
-        });
+      this.log("File upload completed.");
 
-        // Upload the file
-        await client.uploadFrom(fileStream, remoteFilePath);
-      } catch (err) {
-        this.log("❌ Error uploading file: " + err.message, "error");
-        console.error("❌ Error uploading file:", err.message);
-        message = err.message;
-        error = true;
-        resolve();
-      } finally {
-        // Close connection
-        await client.close();
-      }
-    });
-
-    return {
-      status: {
-        error: error,
-        message: message,
-      },
-      output: { size: this.formatBytes(size) },
-    };
+      return {
+        status: { error: false, message: "" },
+        output: { size: this.formatBytes(totalSize) },
+      };
+    } catch (err) {
+      this.log("Error uploading file: " + err.message, "error");
+      return {
+        status: { error: true, message: err.message },
+        output: {},
+      };
+    } finally {
+      client.close();
+    }
   }
 
   formatBytes(bytes) {
