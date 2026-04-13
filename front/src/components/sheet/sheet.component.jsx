@@ -63,6 +63,7 @@ export default class SheetComponent extends Component {
     this.saveEditingNode = this.saveEditingNode.bind(this);
     this.closeModal = this.closeModal.bind(this);
     this.deleteNodeFromEdit = this.deleteNodeFromEdit.bind(this);
+    this.cloneNodeFromEdit = this.cloneNodeFromEdit.bind(this);
     this.saveEditingNode = this.saveEditingNode.bind(this);
     this.executeNode = this.executeNode.bind(this);
     this.executeAll = this.executeAll.bind(this);
@@ -958,6 +959,85 @@ export default class SheetComponent extends Component {
     }
   }
 
+  async cloneNodeFromEdit() {
+    if (!this.editedNode) return;
+    const source = this.editedNode;
+
+    // Persist any unsaved edits in the form into source.params before cloning
+    const editForm = document.getElementById("node-modal-editForm");
+    if (editForm) {
+      Array.from(editForm.elements).forEach((element) => {
+        const param = source.params.find((x) => x.alias === element.id);
+        if (!param) return;
+        if (element.type === "checkbox") {
+          param.value = element.checked;
+        } else if (element.type === "radio") {
+          if (element.checked) param.value = element.value;
+        } else {
+          param.value = element.value;
+        }
+      });
+    }
+
+    // Deep-clone params so the new node doesn't share references
+    const clonedParams = JSON.parse(JSON.stringify(source.params));
+
+    // Offset slightly so the clone doesn't sit exactly on top of the original
+    const x = source.x + 40;
+    const y = source.y + 40;
+
+    const clone = new Node(
+      x,
+      y,
+      source.title,
+      source.type,
+      clonedParams,
+      source.icon,
+      source.inputs ? source.inputs.length : 1,
+      source.outputs ? source.outputs.length : 1,
+      source.iconBase64,
+      source.tags
+    );
+
+    let created = false;
+    await this.api
+      .createNewNode(
+        this.sheet.uid,
+        source.type,
+        source.type,
+        { x, y },
+        {}
+      )
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.id) {
+          clone.id = data.id;
+          created = true;
+        }
+      });
+
+    if (!created) return;
+
+    this.nodes.push(clone);
+    clone.create(this.viewport, this.startConnection, this.updateNode);
+    this.makeNodeDragabble(clone);
+
+    // Persist the cloned params (create only stores position; params need an update)
+    await this.api.updateNewNode(this.sheet.uid, {
+      id: clone.id,
+      outputs: clone.outputs,
+      inputs: clone.inputs,
+      position: { x: clone.x, y: clone.y },
+      title: clone.title,
+      params: clone.params,
+    });
+
+    // Close the modal
+    const modal = document.getElementById("node-modal");
+    if (modal) modal.style.display = "none";
+    this.editedNode = null;
+  }
+
   handleDeleteYes = () => {
     this.deleteNodeFromEdit();
     this.setState({ showMessage: false });
@@ -1231,6 +1311,13 @@ export default class SheetComponent extends Component {
               </button>
               <button className="execute-button" onClick={this.executeNode} disabled={this.state.isRunning}>
                 <i className="fa-solid fa-play"></i> Execute
+              </button>
+              <button
+                type="button"
+                className="node-modal-clone-btn"
+                onClick={this.cloneNodeFromEdit}
+              >
+                <i className="fa-solid fa-clone"></i> Clone
               </button>
               <button
                 type="button"

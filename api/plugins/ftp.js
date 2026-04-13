@@ -62,6 +62,20 @@ class FTPTool extends Plugin {
         default: "/",
         value: undefined,
       },
+      {
+        name: "Port",
+        alias: "port",
+        type: "number",
+        default: 21,
+        value: undefined,
+      },
+      {
+        name: "Use FTPS (Secure)",
+        alias: "secure",
+        type: "boolean",
+        default: false,
+        value: undefined,
+      },
     ];
   }
 
@@ -82,13 +96,16 @@ class FTPTool extends Plugin {
     const client = new Client();
 
     try {
-      this.log("Connecting to host: " + params.host);
+      const port = parseInt(params.port, 10) || 21;
+      const secure = params.secure === true || params.secure === "true";
+
+      this.log(`Connecting to host: ${params.host}:${port}${secure ? " (FTPS)" : ""}`);
       await client.access({
         host: params.host,
         user: params.username,
         password: params.password,
-        port: 21,
-        secure: false,
+        port: port,
+        secure: secure,
       });
 
       const localFilePath = path.resolve(__dirname, params.local_file_path);

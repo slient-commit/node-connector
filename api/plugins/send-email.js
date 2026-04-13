@@ -25,6 +25,7 @@ class SendEmail extends Plugin {
     return [
       { name: "SMTP Host", alias: "smtp_host", type: "string", default: "smtp.gmail.com", value: undefined },
       { name: "SMTP Port", alias: "smtp_port", type: "number", default: 587, value: undefined },
+      { name: "Use SSL/TLS", alias: "smtp_secure", type: "boolean", default: false, value: undefined },
       { name: "Username", alias: "username", type: "string", default: "", value: undefined },
       { name: "Password", alias: "password", type: "string", secret: true, default: "", value: undefined },
       { name: "From", alias: "from", type: "string", default: "", value: undefined },
@@ -50,10 +51,14 @@ class SendEmail extends Plugin {
       return { status: { error: true, message: "Recipient (To) is required" }, output: {} };
     }
 
+    const port = parseInt(params.smtp_port, 10) || 587;
+    // Auto-secure on port 465, or if user explicitly set the flag
+    const secure = params.smtp_secure === true || params.smtp_secure === "true" || port === 465;
+
     const transporter = nodemailer.createTransport({
       host: params.smtp_host || "smtp.gmail.com",
-      port: parseInt(params.smtp_port, 10) || 587,
-      secure: parseInt(params.smtp_port, 10) === 465,
+      port: port,
+      secure: secure,
       auth: { user: params.username, pass: params.password },
     });
 

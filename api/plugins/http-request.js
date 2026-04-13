@@ -32,6 +32,7 @@ class HttpRequest extends Plugin {
       { name: "Headers (JSON)", alias: "headers", type: "big_string", default: '{"Content-Type": "application/json"}', value: undefined },
       { name: "Body", alias: "body", type: "big_string", default: "", value: undefined },
       { name: "Timeout (ms)", alias: "timeout", type: "number", default: 30000, value: undefined },
+      { name: "Verify SSL", alias: "verify_ssl", type: "boolean", default: true, value: undefined },
     ];
   }
 
@@ -59,6 +60,17 @@ class HttpRequest extends Plugin {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
     fetchOptions.signal = controller.signal;
+
+    // Allow disabling SSL certificate verification (e.g. for self-signed certs)
+    const verifySsl = params.verify_ssl !== false && params.verify_ssl !== "false";
+    if (!verifySsl) {
+      try {
+        const { Agent } = require("undici");
+        fetchOptions.dispatcher = new Agent({ connect: { rejectUnauthorized: false } });
+      } catch {
+        // undici not available, fall back silently
+      }
+    }
 
     this.log(`${method} ${url}`);
 

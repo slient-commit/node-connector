@@ -63,6 +63,27 @@ class SSHTool extends Plugin {
         default: undefined,
         value: undefined,
       },
+      {
+        name: "Port",
+        alias: "ssh_port",
+        type: "number",
+        default: 22,
+        value: undefined,
+      },
+      {
+        name: "Connect Timeout (ms)",
+        alias: "ssh_connect_timeout",
+        type: "number",
+        default: 10000,
+        value: undefined,
+      },
+      {
+        name: "Command Timeout (ms)",
+        alias: "ssh_command_timeout",
+        type: "number",
+        default: 30000,
+        value: undefined,
+      },
     ];
   }
 
@@ -91,13 +112,17 @@ class SSHTool extends Plugin {
       };
     }
 
+    const connectTimeout = parseInt(params.ssh_connect_timeout, 10) || SSH_CONNECT_TIMEOUT;
+    const commandTimeout = parseInt(params.ssh_command_timeout, 10) || SSH_COMMAND_TIMEOUT;
+    const port = parseInt(params.ssh_port, 10) || 22;
+
     await new Promise((_resolve) => {
       const sshConfig = {
         host: params.ssh_host,
-        port: 22,
+        port: port,
         username: params.ssh_username,
         password: params.ssh_password,
-        readyTimeout: SSH_CONNECT_TIMEOUT,
+        readyTimeout: connectTimeout,
       };
 
       const sshClient = new Client();
@@ -114,8 +139,8 @@ class SSHTool extends Plugin {
 
               // Per-command timeout
               const timer = setTimeout(() => {
-                reject(new Error(`Command timed out after ${SSH_COMMAND_TIMEOUT / 1000}s: "${cmd}"`));
-              }, SSH_COMMAND_TIMEOUT);
+                reject(new Error(`Command timed out after ${commandTimeout / 1000}s: "${cmd}"`));
+              }, commandTimeout);
 
               sshClient.exec(cmd, (err, stream) => {
                 if (err) {
