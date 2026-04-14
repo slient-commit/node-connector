@@ -52,6 +52,12 @@ router.get(
   require("../middleware/authenticateToken"),
   async (req, res) => {
     const sheet = await new SheetManager().load(req.query.id);
+    if (sheet) {
+      const row = await new SQLiteManager().selectBy("sheets", { name: "uid", value: req.query.id });
+      if (row) {
+        sheet.trigger_type = row.trigger_type;
+      }
+    }
     res.json(sheet);
   }
 );
@@ -63,6 +69,67 @@ router.post(
     const sheet = await new SheetManager().create(req.body.name);
     AuditLog.log({ event: "sheet_create", userId: req.user.id, ip: req.ip, details: { name: req.body.name, uid: sheet.uid } });
     res.json(sheet);
+  }
+);
+
+router.post(
+  "/clone",
+  require("../middleware/authenticateToken"),
+  async (req, res) => {
+    const sourceUid = req.body.uid;
+    if (!sourceUid) {
+      return res.status(400).json({ error: "uid is required" });
+    }
+
+    const sheetManager = new SheetManager();
+    const source = await sheetManager.load(sourceUid);
+    if (!source) {
+      return res.status(404).json({ error: "Sheet not found" });
+    }
+
+    // Create a new sheet with "(clone)" suffix
+    const cloneName = `${source.name} (clone)`;
+    const clone = await sheetManager.create(cloneName);
+
+    // Copy nodes with new IDs, preserving the ID mapping for connections
+    const idMap = new Map();
+    for (const node of source.data.nodes) {
+      const newId = Math.random().toString(36).substr(2, 9);
+      idMap.set(node.id, newId);
+    }
+
+    clone.data.nodes = source.data.nodes.map((node) => ({
+      ...JSON.parse(JSON.stringify(node)),
+      id: idMap.get(node.id),
+      inputs: (node.inputs || []).map((id) => idMap.get(id) || id),
+      outputs: (node.outputs || []).map((id) => idMap.get(id) || id),
+    }));
+
+    // Set cloned sheet to inactive
+    await new SQLiteManager().update("sheets", [{ name: "is_active", value: 0 }], [{ name: "uid", value: clone.uid }]);
+
+    sheetManager.save(clone);
+    AuditLog.log({ event: "sheet_clone", userId: req.user.id, ip: req.ip, details: { sourceUid, cloneUid: clone.uid } });
+    res.json(clone);
+  }
+);
+
+router.delete(
+  "/delete",
+  require("../middleware/authenticateToken"),
+  async (req, res) => {
+    const uid = req.body.uid;
+    if (!uid) {
+      return res.status(400).json({ error: "uid is required" });
+    }
+    const sheetManager = new SheetManager();
+    const sheet = await sheetManager.load(uid);
+    if (!sheet) {
+      return res.status(404).json({ error: "Sheet not found" });
+    }
+    await sheetManager.deleteSheet(uid);
+    AuditLog.log({ event: "sheet_delete", userId: req.user.id, ip: req.ip, details: { uid, name: sheet.name } });
+    res.json({ message: "Sheet deleted" });
   }
 );
 
@@ -187,6 +254,14 @@ router.get(
             res.write(eventData); // Send data to the client
           }
         };
+        // Parse optional input params from query string
+        let initialInput = null;
+        if (req.query.inputParams) {
+          try {
+            initialInput = JSON.parse(decodeURIComponent(req.query.inputParams));
+          } catch (_e) { /* ignore invalid JSON */ }
+        }
+
         try {
           await Executer.executeNodes(
             store,
@@ -195,9 +270,9 @@ router.get(
             debug,
             () => {
               res.end();
-            }
+            },
+            initialInput
           );
-          // await exec.trigger(store, "./../plugins", {}, debug);
         } catch (err) {
           console.error(`Node execution error [${node.id}]:`, err.message);
           debug({
@@ -364,6 +439,7 @@ router.post(
   async (req, res) => {
     const sheetUid = req.body.sheetUid;
     const triggerType = req.body.triggerType || "terminal";
+    const inputParams = req.body.params || null;
     if (!sheetUid) {
       return res.status(400).json({ message: "sheetUid is required" });
     }
@@ -413,7 +489,8 @@ router.post(
           rootNode.id,
           "./../plugins",
           sendProgress,
-          null
+          null,
+          inputParams
         );
 
         // Collect results from executed nodes
@@ -470,6 +547,7 @@ router.post(
   require("../middleware/authenticateInternalKey"),
   async (req, res) => {
     const sheetUid = req.params.uid;
+    const inputParams = req.body && typeof req.body === "object" ? req.body : null;
 
     const row = await new SQLiteManager().selectBy("sheets", { name: "uid", value: sheetUid });
     if (!row) {
@@ -502,7 +580,7 @@ router.post(
 
     for (const rootNode of rootNodes) {
       try {
-        await Executer.executeNodes(store, rootNode.id, "./../plugins", null, null);
+        await Executer.executeNodes(store, rootNode.id, "./../plugins", null, null, inputParams);
         const executedResults = store
           .filter((n) => n.isExecuted)
           .map((n) => ({

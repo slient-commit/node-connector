@@ -43,6 +43,8 @@ export default class ListComponent extends Component {
       profileConfirmPassword: "",
       profileError: "",
       profileSuccess: "",
+      showDeleteModal: false,
+      deleteSheet: null,
     };
   }
 
@@ -151,6 +153,32 @@ export default class ListComponent extends Component {
     }
   };
 
+  handleCloneSheet = async (sheet) => {
+    try {
+      await this.api.cloneSheet(sheet.uid);
+      this.loadSheets();
+    } catch (err) {
+      console.error("Failed to clone sheet:", err);
+    }
+  };
+
+  handleDeleteSheet = (sheet) => {
+    this.setState({ showDeleteModal: true, deleteSheet: sheet });
+  };
+
+  handleDeleteConfirm = async () => {
+    const { deleteSheet } = this.state;
+    if (deleteSheet) {
+      await this.api.deleteSheet(deleteSheet.uid);
+      this.loadSheets();
+    }
+    this.setState({ showDeleteModal: false, deleteSheet: null });
+  };
+
+  handleDeleteCancel = () => {
+    this.setState({ showDeleteModal: false, deleteSheet: null });
+  };
+
   handleLogout = async () => {
     await this.auth.logout();
     window.location.href = "/login";
@@ -209,11 +237,25 @@ export default class ListComponent extends Component {
                     {sheet.is_active ? "Active" : "Inactive"}
                   </span>
                   <button
+                    className="clone-btn"
+                    onClick={() => this.handleCloneSheet(sheet)}
+                    title="Duplicate"
+                  >
+                    &#x2398;
+                  </button>
+                  <button
                     className="settings-btn"
                     onClick={() => this.openSettingsModal(sheet)}
                     title="Settings"
                   >
                     &#9881;
+                  </button>
+                  <button
+                    className="delete-btn"
+                    onClick={() => this.handleDeleteSheet(sheet)}
+                    title="Delete"
+                  >
+                    &#x2715;
                   </button>
                 </div>
               </div>
@@ -304,8 +346,11 @@ export default class ListComponent extends Component {
                 )}
 
                 {settingsTriggerType === "webhook" && (
-                  <div className="webhook-url">
-                    POST /sheet/webhook/{this.state.settingsSheet?.uid}
+                  <div className="terminal-cmd">
+                    <label>Endpoint:</label>
+                    <code>POST /sheet/webhook/{this.state.settingsSheet?.uid}</code>
+                    <label>With input params:</label>
+                    <code>{"curl -X POST http://localhost/api/sheet/webhook/" + this.state.settingsSheet?.uid + ' -H "Content-Type: application/json" -H "X-Internal-Key: YOUR_INTERNAL_API_KEY" -d \'{"key":"value"}\''}</code>
                   </div>
                 )}
 
@@ -313,10 +358,14 @@ export default class ListComponent extends Component {
                   <div className="terminal-cmd">
                     <label>Command:</label>
                     <code>node api/cli.js {this.state.settingsSheet?.uid}</code>
+                    <label>With input params:</label>
+                    <code>{"node api/cli.js " + this.state.settingsSheet?.uid + " --params '{\"key\":\"value\"}'"}</code>
                     <label>Docker exec:</label>
                     <code>docker exec node-connector node api/cli.js {this.state.settingsSheet?.uid}</code>
                     <label>Or with curl:</label>
-                    <code>curl -X POST http://localhost/api/sheet/execute-batch -H "Content-Type: application/json" -H "X-Internal-Key: YOUR_INTERNAL_API_KEY" -d "{'{'}\"sheetUid\":\"{this.state.settingsSheet?.uid}\"{'}'}"</code>
+                    <code>{"curl -X POST http://localhost/api/sheet/execute-batch -H \"Content-Type: application/json\" -H \"X-Internal-Key: YOUR_INTERNAL_API_KEY\" -d '{\"sheetUid\":\"" + this.state.settingsSheet?.uid + "\"}'"}</code>
+                    <label>Curl with input params:</label>
+                    <code>{"curl -X POST http://localhost/api/sheet/execute-batch -H \"Content-Type: application/json\" -H \"X-Internal-Key: YOUR_INTERNAL_API_KEY\" -d '{\"sheetUid\":\"" + this.state.settingsSheet?.uid + "\",\"params\":{\"key\":\"value\"}}'"}</code>
                   </div>
                 )}
 
@@ -367,6 +416,22 @@ export default class ListComponent extends Component {
                   <button type="submit" className="submit-btn">Change Password</button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+        {/* Delete Confirmation Modal */}
+        {this.state.showDeleteModal && (
+          <div className="modal" style={{ display: "flex" }}>
+            <div className="modal-content delete-modal">
+              <span className="close" onClick={this.handleDeleteCancel}>&times;</span>
+              <h2>Delete Sheet</h2>
+              <p className="delete-confirm-text">
+                Are you sure you want to delete <strong>{this.state.deleteSheet?.name}</strong>? This action cannot be undone.
+              </p>
+              <div className="delete-modal-actions">
+                <button className="cancel-btn" onClick={this.handleDeleteCancel}>Cancel</button>
+                <button className="danger-btn" onClick={this.handleDeleteConfirm}>Delete</button>
+              </div>
             </div>
           </div>
         )}

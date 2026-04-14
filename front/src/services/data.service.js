@@ -26,6 +26,14 @@ export default class DataService {
     return await this.api.post("/sheet/create", { name });
   }
 
+  async cloneSheet(uid) {
+    return await this.api.post("/sheet/clone", { uid });
+  }
+
+  async deleteSheet(uid) {
+    return await this.api.delete("/sheet/delete", { body: JSON.stringify({ uid }) });
+  }
+
   async createNewNode(sheetId, title, pluginId, position, params) {
     return await this.api.post("/sheet/node", {
       sheetId,
@@ -36,21 +44,15 @@ export default class DataService {
     });
   }
 
-  async executeNode(sheetId, node, callback = undefined) {
-    return await this.api.sse(
-      "/sheet/node/execute",
-      [
-        {
-          name: "sheetId",
-          value: sheetId,
-        },
-        {
-          name: "nodeId",
-          value: node.id,
-        },
-      ],
-      callback
-    );
+  async executeNode(sheetId, node, callback = undefined, inputParams = null) {
+    const queries = [
+      { name: "sheetId", value: sheetId },
+      { name: "nodeId", value: node.id },
+    ];
+    if (inputParams) {
+      queries.push({ name: "inputParams", value: encodeURIComponent(JSON.stringify(inputParams)) });
+    }
+    return await this.api.sse("/sheet/node/execute", queries, callback);
   }
 
   async updateNewNode(sheetId, node) {

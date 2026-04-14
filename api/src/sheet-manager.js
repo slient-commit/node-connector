@@ -138,6 +138,15 @@ class SheetManager {
     return store;
   }
 
+  async deleteSheet(uid) {
+    await new SQLiteManager().deleteBy("sheets", [{ name: "uid", value: uid }]);
+    const filePath = `./sheets/${uid}.json`;
+    try {
+      const fs = require("fs");
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch (_e) { /* ignore */ }
+  }
+
   async removeNode(sheet, node) {
     if (sheet) {
       if (sheet.data.nodes.find((n) => n.id === node.id)) {

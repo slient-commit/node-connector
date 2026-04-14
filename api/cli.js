@@ -6,8 +6,20 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 const sheetUid = process.argv[2];
 
 if (!sheetUid) {
-  console.error("Usage: node cli.js <sheet-uid>");
+  console.error("Usage: node cli.js <sheet-uid> [--params '{\"key\":\"value\"}']");
   process.exit(1);
+}
+
+// Parse --params argument
+let inputParams = null;
+const paramsIndex = process.argv.indexOf("--params");
+if (paramsIndex !== -1 && process.argv[paramsIndex + 1]) {
+  try {
+    inputParams = JSON.parse(process.argv[paramsIndex + 1]);
+  } catch {
+    console.error("Error: --params must be valid JSON");
+    process.exit(1);
+  }
 }
 
 const PORT = process.env.PORT || 3001;
@@ -21,13 +33,16 @@ const BASE_URL = `http://localhost:${PORT}`;
 
 async function execute() {
   try {
+    const payload = { sheetUid, triggerType: "terminal" };
+    if (inputParams) payload.params = inputParams;
+
     const res = await fetch(`${BASE_URL}/sheet/execute-batch`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-Internal-Key": INTERNAL_API_KEY,
       },
-      body: JSON.stringify({ sheetUid, triggerType: "terminal" }),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {

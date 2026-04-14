@@ -216,6 +216,37 @@ class SQLiteManager {
     });
   }
 
+  async deleteBy(table_name, where_columns = []) {
+    assertIdentifier(table_name, "table name");
+    where_columns.forEach((col) => assertIdentifier(col.name, "column name"));
+    return new Promise(async (resolve) => {
+      await this.openConnection().then((db) => {
+        if (!db) resolve(-1);
+        let __where = "";
+        let values = [];
+        where_columns.forEach((column) => {
+          __where += `"${column.name}" = ? AND `;
+          values.push(column.value);
+        });
+        __where = __where.substring(0, __where.length - 5);
+        let query = `DELETE FROM "${table_name}" WHERE ${__where}`;
+        let stmt = db.prepare(query);
+        stmt.run(values, function (err) {
+          if (err) {
+            console.error(`Error deleting from ${table_name}:`, err.message);
+            stmt.finalize();
+            db.close();
+            resolve(-1);
+            return;
+          }
+          stmt.finalize();
+          db.close();
+          resolve(this.changes);
+        });
+      });
+    });
+  }
+
   async addColumn(tableName, columnName, columnType, defaultValue = null) {
     assertIdentifier(tableName, "table name");
     assertIdentifier(columnName, "column name");

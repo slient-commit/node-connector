@@ -41,7 +41,8 @@ class Executer {
     nodeId,
     pluginsFolder,
     sendProgress,
-    closeSSE
+    closeSSE,
+    initialInput
   ) {
     const nodeMap = new Map();
     nodes.forEach((node) => nodeMap.set(node.id, node));
@@ -168,7 +169,12 @@ class Executer {
 
           let inputParams = { ...Executer.getParams(node.node), input: {} };
 
-          // Merge in results from ALL input nodes
+          // Seed with initialInput so trigger params are available to ALL nodes in the chain
+          if (initialInput) {
+            inputParams.input = { ...initialInput };
+          }
+
+          // Merge in results from ALL input nodes (overrides initialInput if same keys)
           if (node.node.inputs) {
             for (let _nodeId of node.node.inputs) {
               const execNode = nodes.find((n) => n.node.id === _nodeId);

@@ -146,6 +146,93 @@
   color: #991b1b;
 }
 
+/* Delete button */
+.delete-btn {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #999;
+  transition: all 0.2s ease;
+}
+
+.delete-btn:hover {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #f87171;
+}
+
+/* Delete confirmation modal */
+.delete-modal {
+  text-align: center;
+}
+
+.delete-confirm-text {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.delete-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.cancel-btn {
+  padding: 10px 20px;
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-btn:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.danger-btn {
+  padding: 10px 20px;
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.danger-btn:hover {
+  background: #b91c1c;
+}
+
+/* Clone button */
+.clone-btn {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 15px;
+  cursor: pointer;
+  color: #999;
+  transition: all 0.2s ease;
+}
+
+.clone-btn:hover {
+  background: #f5f5f5;
+  color: #2563eb;
+  border-color: #93b4f5;
+}
+
 /* Settings button */
 .settings-btn {
   background: none;

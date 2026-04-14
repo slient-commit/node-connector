@@ -27,6 +27,8 @@ export default class SheetComponent extends Component {
       plugins: [],
       allTags: [],
       activeTag: null,
+      showInputParamsModal: false,
+      inputParamsRows: [{ key: "", value: "" }],
     };
     this.svg = null;
     this.draggedNode = null;
@@ -66,7 +68,9 @@ export default class SheetComponent extends Component {
     this.cloneNodeFromEdit = this.cloneNodeFromEdit.bind(this);
     this.saveEditingNode = this.saveEditingNode.bind(this);
     this.executeNode = this.executeNode.bind(this);
+    this.handlePlayAll = this.handlePlayAll.bind(this);
     this.executeAll = this.executeAll.bind(this);
+    this.executeAllWithParams = this.executeAllWithParams.bind(this);
     this.loadHistory = this.loadHistory.bind(this);
     this.updateNode = this.updateNode.bind(this);
   }
@@ -1112,7 +1116,34 @@ export default class SheetComponent extends Component {
     }
   }
 
-  executeAll() {
+  handlePlayAll() {
+    const rootNodes = this.nodes.filter((n) => !n.inputs || n.inputs.length === 0);
+    if (rootNodes.length === 0) return;
+
+    // If trigger type is terminal or webhook, show input params modal first
+    const triggerType = this.sheet && this.sheet.trigger_type;
+    if (triggerType === "terminal" || triggerType === "webhook") {
+      this.setState({ showInputParamsModal: true, inputParamsRows: [{ key: "", value: "" }] });
+      return;
+    }
+
+    this.executeAll();
+  }
+
+  executeAllWithParams() {
+    // Build input params from rows
+    const params = {};
+    for (const row of this.state.inputParamsRows) {
+      if (row.key.trim()) {
+        params[row.key.trim()] = row.value;
+      }
+    }
+    const inputParams = Object.keys(params).length > 0 ? params : null;
+    this.setState({ showInputParamsModal: false });
+    this.executeAll(inputParams);
+  }
+
+  executeAll(inputParams = null) {
     const rootNodes = this.nodes.filter((n) => !n.inputs || n.inputs.length === 0);
     if (rootNodes.length === 0) return;
 
@@ -1154,7 +1185,7 @@ export default class SheetComponent extends Component {
     };
 
     rootNodes.forEach((rootNode) => {
-      const es = this.api.executeNode(this.sheet.uid, { id: rootNode.id }, sseCallback);
+      const es = this.api.executeNode(this.sheet.uid, { id: rootNode.id }, sseCallback, inputParams);
       es.addEventListener("error", () => {
         completedCount++;
         if (completedCount >= rootNodes.length) {
@@ -1200,7 +1231,7 @@ export default class SheetComponent extends Component {
           <button className="toolbar-btn back-btn" onClick={() => { window.location.href = "/editor"; }}>
             <i className="fa-solid fa-arrow-left"></i> Back
           </button>
-          <button className="toolbar-btn play-all-btn" onClick={this.executeAll} disabled={this.state.isRunning}>
+          <button className="toolbar-btn play-all-btn" onClick={this.handlePlayAll} disabled={this.state.isRunning}>
             <i className="fa-solid fa-play"></i> Play All
           </button>
           <button className="toolbar-btn history-btn" onClick={this.loadHistory}>
@@ -1375,6 +1406,66 @@ export default class SheetComponent extends Component {
             ]}
             onClose={this.handleConfirmDeleteNo}
           />
+        )}
+
+        {this.state.showInputParamsModal && (
+          <div className="input-params-overlay">
+            <div className="input-params-modal">
+              <div className="input-params-header">
+                <h3>Input Parameters</h3>
+                <span className="input-params-close" onClick={() => this.setState({ showInputParamsModal: false })}>&times;</span>
+              </div>
+              <div className="input-params-body">
+                {this.state.inputParamsRows.map((row, i) => (
+                  <div key={i} className="input-params-row">
+                    <input
+                      type="text"
+                      placeholder="Key"
+                      value={row.key}
+                      onChange={(e) => {
+                        const rows = [...this.state.inputParamsRows];
+                        rows[i] = { ...rows[i], key: e.target.value };
+                        this.setState({ inputParamsRows: rows });
+                      }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Value"
+                      value={row.value}
+                      onChange={(e) => {
+                        const rows = [...this.state.inputParamsRows];
+                        rows[i] = { ...rows[i], value: e.target.value };
+                        this.setState({ inputParamsRows: rows });
+                      }}
+                    />
+                    <button
+                      className="input-params-remove-btn"
+                      onClick={() => {
+                        const rows = this.state.inputParamsRows.filter((_, idx) => idx !== i);
+                        this.setState({ inputParamsRows: rows.length ? rows : [{ key: "", value: "" }] });
+                      }}
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+                <button
+                  className="input-params-add-btn"
+                  onClick={() => this.setState((prev) => ({ inputParamsRows: [...prev.inputParamsRows, { key: "", value: "" }] }))}
+                >
+                  + Add Row
+                </button>
+              </div>
+              <div className="input-params-footer">
+                <button className="input-params-skip-btn" onClick={() => { this.setState({ showInputParamsModal: false }); this.executeAll(); }}>
+                  Skip
+                </button>
+                <button className="input-params-execute-btn" onClick={this.executeAllWithParams}>
+                  <i className="fa-solid fa-play"></i> Execute
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {this.state.showConfirmDeleteConnection && (
