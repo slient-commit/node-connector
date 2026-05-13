@@ -65,7 +65,7 @@ async function execute() {
         const data = JSON.parse(line.slice(6));
 
         if (data.id === "batch-complete") {
-          // Final summary
+          // Detailed report
           console.log(`\nSheet "${data.sheetName}" executed.\n`);
           for (const root of data.results) {
             console.log(`Root: ${root.rootNodeTitle} [${root.status}]`);
@@ -79,6 +79,36 @@ async function execute() {
             }
             console.log();
           }
+
+          // Quick summary
+          const totalNodes = data.results.reduce((sum, r) => sum + (r.nodes ? r.nodes.length : 0), 0);
+          const failedNodes = [];
+          for (const root of data.results) {
+            if (root.status === "error") {
+              failedNodes.push({ name: root.rootNodeTitle, error: root.error });
+            }
+            if (root.nodes) {
+              for (const node of root.nodes) {
+                if (node.result && node.result.status && node.result.status.error) {
+                  failedNodes.push({ name: node.title, error: node.result.status.message || "unknown" });
+                }
+              }
+            }
+          }
+          const allPassed = failedNodes.length === 0;
+
+          console.log("─".repeat(50));
+          console.log(allPassed ? "  RESULT: ALL PASSED" : "  RESULT: FAILED");
+          console.log(`  Sheet:  ${data.sheetName}`);
+          console.log(`  Nodes:  ${totalNodes}    Errors: ${failedNodes.length}`);
+          if (failedNodes.length > 0) {
+            console.log("");
+            for (const f of failedNodes) {
+              console.log(`  x ${f.name}: ${f.error}`);
+            }
+          }
+          console.log("─".repeat(50));
+          console.log("");
         } else {
           // Live progress
           const label = data.title || data.id;
