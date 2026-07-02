@@ -13,15 +13,25 @@ describe("Executer", () => {
       expect(result).toEqual({ host: "example.com", port: "8080" });
     });
 
-    test("falls back to default when value is falsy", () => {
+    test("falls back to default when value is undefined or null", () => {
       const node = {
         params: [
           { alias: "host", value: undefined, default: "localhost" },
-          { alias: "port", value: "", default: "3000" },
+          { alias: "port", value: null, default: "3000" },
         ],
       };
       const result = Executer.getParams(node);
       expect(result).toEqual({ host: "localhost", port: "3000" });
+    });
+
+    test("preserves empty string as a valid user-set value", () => {
+      const node = {
+        params: [
+          { alias: "host", value: "", default: "localhost" },
+        ],
+      };
+      const result = Executer.getParams(node);
+      expect(result).toEqual({ host: "" });
     });
 
     test("handles empty params", () => {

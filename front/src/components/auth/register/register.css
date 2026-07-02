@@ -1,7 +1,6 @@
 .register-wrapper {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #f5f5f5;
-  color: #333;
+  background: transparent;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -10,18 +9,21 @@
 }
 
 .register-wrapper .login-container {
-  background-color: #fff;
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   padding: 40px;
-  border-radius: 12px;
+  border-radius: 16px;
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--glass-shadow);
   text-align: center;
 }
 
 .register-wrapper .login-container h2 {
   margin-bottom: 24px;
-  color: #333;
+  color: var(--text-primary);
   font-size: 22px;
   font-weight: 700;
 }
@@ -30,10 +32,10 @@
   width: 100%;
   padding: 12px 14px;
   margin: 8px 0;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background-color: #fff;
-  color: #333;
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  background: var(--input-bg);
+  color: var(--text-primary);
   font-size: 14px;
   font-family: inherit;
   box-sizing: border-box;
@@ -42,45 +44,47 @@
 
 .register-input:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .register-input::placeholder {
-  color: #aaa;
+  color: var(--text-muted);
 }
 
 .register-button {
   width: 100%;
   padding: 12px;
   margin-top: 8px;
-  background-color: #2563eb;
+  background: var(--accent);
   color: #fff;
   font-weight: 600;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   font-size: 14px;
   font-family: inherit;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .register-button:hover {
-  background-color: #1d4ed8;
+  background: var(--accent-hover);
+  box-shadow: 0 4px 16px var(--accent-glow);
 }
 
 .register-button:active {
-  background-color: #1e40af;
+  background: #1e40af;
 }
 
 .register-wrapper .login-container p {
   margin-top: 16px;
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .register-wrapper .login-container a {
-  color: #2563eb;
+  color: var(--accent);
   text-decoration: none;
   font-weight: 500;
 }
@@ -90,7 +94,7 @@
 }
 
 #error-message {
-  color: #dc3545;
+  color: #f87171;
   margin-top: 12px;
   font-size: 13px;
 }

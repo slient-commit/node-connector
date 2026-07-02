@@ -10,6 +10,7 @@ const SECRET_PARAMS = {
   SSHTool: ["ssh_password"],
   FTPTool: ["password"],
   SendEmail: ["password"],
+  AwsEcrLogin: ["aws_access_key_id", "aws_secret_access_key"],
 };
 
 class SheetManager {

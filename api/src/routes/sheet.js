@@ -234,19 +234,16 @@ router.get(
       if (node) {
         AuditLog.log({ event: "sheet_execute", userId: req.user.id, ip: req.ip, details: { sheetUid, nodeId: node.id } });
         const store = sheets.getNodeStore(sheet);
-        const exec = store.find((x) => x.node.id === node.id);
         // Set headers for SSE
         res.setHeader("Content-Type", "text/event-stream");
         res.setHeader("Cache-Control", "no-cache");
         res.setHeader("Connection", "keep-alive");
 
-        let done = false;
         const debug = async (data) => {
           if (data) {
             if (data.id) {
               if (data.id === "chain-complete") {
                 res.end();
-                done = true;
                 return;
               }
             }

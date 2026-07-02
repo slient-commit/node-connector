@@ -83,7 +83,7 @@ export default class Node {
       height: this.cardHeight - this.headerHeight,
       rx: this.cornerRadius,
       ry: this.cornerRadius,
-      fill: "#ffffff",
+      fill: "#1e293b",
       class: "node-body",
     });
     this.group.appendChild(this.bodyRect);
@@ -97,7 +97,7 @@ export default class Node {
       rx: this.cornerRadius,
       ry: this.cornerRadius,
       fill: "none",
-      stroke: "#e0e0e0",
+      stroke: "rgba(255,255,255,0.1)",
       "stroke-width": 1,
       filter: "url(#dropShadow)",
       class: "node-card",

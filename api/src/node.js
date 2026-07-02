@@ -1,4 +1,3 @@
-const ToolLoader = require("./tool-loader");
 const { v4: uuidv4 } = require("uuid");
 
 class Node {

@@ -163,7 +163,7 @@ router.put("/change-password", require("../middleware/authenticateToken"), async
 router.get("/profile", require("../middleware/authenticateToken"), async (req, res) => {
   const user = await User.getUserById(req.user.id);
   if (!user) return res.sendStatus(404);
-  const { password, refreshToken, ...safeUser } = user;
+  const { password: _password, refreshToken: _refreshToken, ...safeUser } = user;
   res.json(safeUser);
 });
 

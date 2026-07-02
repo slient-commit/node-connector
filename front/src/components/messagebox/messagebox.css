@@ -5,7 +5,9 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -25,14 +27,17 @@
 
 /* ── Box ── */
 .messagebox {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
   padding: 28px 32px 22px;
   min-width: 340px;
   max-width: 440px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
   animation: messagebox-slideIn 0.2s ease;
-  border-top: 4px solid #2563eb;
+  border-top: 4px solid var(--accent);
 }
 
 .messagebox.warning {
@@ -48,7 +53,7 @@
 }
 
 .messagebox.info {
-  border-top-color: #2563eb;
+  border-top-color: var(--accent);
 }
 
 /* ── Body ── */
@@ -66,25 +71,25 @@
 }
 
 .messagebox-icon.info {
-  color: #2563eb;
+  color: #93c5fd;
 }
 
 .messagebox-icon.warning {
-  color: #f59e0b;
+  color: #fbbf24;
 }
 
 .messagebox-icon.error {
-  color: #ef4444;
+  color: #f87171;
 }
 
 .messagebox-icon.success {
-  color: #22c55e;
+  color: #4ade80;
 }
 
 .messagebox-text {
   margin: 0;
   font-size: 15px;
-  color: #333;
+  color: var(--text-primary);
   line-height: 1.5;
 }
 
@@ -100,18 +105,19 @@
   font-size: 14px;
   font-weight: 500;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background 0.15s, box-shadow 0.15s;
+  transition: all 0.15s;
 }
 
 .messagebox-btn.primary {
-  background: #2563eb;
+  background: var(--accent);
   color: #fff;
 }
 
 .messagebox-btn.primary:hover {
-  background: #1d4ed8;
+  background: var(--accent-hover);
+  box-shadow: 0 4px 16px var(--accent-glow);
 }
 
 .messagebox-btn.danger {
@@ -121,14 +127,17 @@
 
 .messagebox-btn.danger:hover {
   background: #dc2626;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
 }
 
 .messagebox-btn.default {
-  background: #f3f4f6;
-  color: #333;
-  border: 1px solid #d1d5db;
+  background: var(--glass-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
 }
 
 .messagebox-btn.default:hover {
-  background: #e5e7eb;
+  background: var(--glass-bg-strong);
+  color: var(--text-primary);
+  border-color: var(--glass-border-strong);
 }

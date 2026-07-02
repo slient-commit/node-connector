@@ -30,6 +30,7 @@ class AwsEcrLogin extends Plugin {
         type: "string",
         default: undefined,
         value: undefined,
+        secret: true,
       },
       {
         name: "AWS Secret Access Key",
@@ -37,6 +38,7 @@ class AwsEcrLogin extends Plugin {
         type: "string",
         default: undefined,
         value: undefined,
+        secret: true,
       },
       {
         name: "AWS Region",

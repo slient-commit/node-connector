@@ -5,15 +5,15 @@
 
 .main-area {
   flex: 1;
-  background-color: #f4f4f4;
-  min-width: 0; /* Prevents overflow issues */
+  background-color: #111827;
+  min-width: 0;
   overflow-y: auto;
-  border-right: 1px solid #ccc;
+  border-right: 1px solid var(--glass-border);
 }
 
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   height: 100vh;
   overflow: hidden;
 }

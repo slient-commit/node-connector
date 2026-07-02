@@ -109,7 +109,7 @@ export default class SheetComponent extends Component {
     const gridRect = this.createSVGElement("rect", {
       width: 40,
       height: 40,
-      fill: "#f9f9f9",
+      fill: "#0f172a",
     });
     this.gridPattern.appendChild(gridRect);
 
@@ -118,7 +118,7 @@ export default class SheetComponent extends Component {
       y1: 0,
       x2: 40,
       y2: 0,
-      stroke: "#ddd",
+      stroke: "rgba(255,255,255,0.06)",
       "stroke-width": 1,
     });
     this.gridPattern.appendChild(gridLineX);
@@ -128,7 +128,7 @@ export default class SheetComponent extends Component {
       y1: 0,
       x2: 0,
       y2: 40,
-      stroke: "#ddd",
+      stroke: "rgba(255,255,255,0.06)",
       "stroke-width": 1,
     });
     this.gridPattern.appendChild(gridLineY);
@@ -146,7 +146,7 @@ export default class SheetComponent extends Component {
       dy: "2",
       stdDeviation: "3",
       "flood-color": "#000000",
-      "flood-opacity": "0.12",
+      "flood-opacity": "0.4",
     });
     filter.appendChild(feDropShadow);
     defs.appendChild(filter);

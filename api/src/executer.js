@@ -6,7 +6,7 @@ class Executer {
     for (const p in node.params) {
       const param = node.params[p];
       if (param) {
-        params[param.alias] = param.value ? param.value : param.default;
+        params[param.alias] = (param.value !== undefined && param.value !== null) ? param.value : param.default;
       }
     }
     return params;
