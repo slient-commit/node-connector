@@ -1,0 +1,19 @@
+services:
+  node-connector:
+    build: .
+    container_name: node-connector
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_PATH=./db/sheets.db
+      - JWT_SECRET=${JWT_SECRET}
+      - REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - CORS_ORIGIN=http://localhost
+      - FORCE_HTTPS=false
+      - API_BASE_URL=http://127.0.0.1:3001
+      - LOG_LEVEL=info
+    restart: unless-stopped

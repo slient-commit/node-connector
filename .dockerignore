@@ -4,5 +4,3 @@
 .git
 .gitignore
 .claude/
-api/db/
-api/sheets/

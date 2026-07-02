@@ -71,10 +71,14 @@ const AuditLog = require("./src/models/audit-log");
   app.use(morgan("tiny"));
   app.use(express.json());
 
-  // Redirect HTTP to HTTPS in production
-  if (process.env.NODE_ENV === "production") {
+  // Redirect HTTP to HTTPS in production (skip if behind reverse proxy or if disabled)
+  if (process.env.NODE_ENV === "production" && process.env.FORCE_HTTPS !== "false") {
     app.use((req, res, next) => {
-      if (req.secure) return next();
+      // req.secure is true when trust proxy is enabled and X-Forwarded-Proto is https
+      if (req.secure || req.headers["x-forwarded-proto"] === "https") return next();
+      // Skip redirect for internal/loopback requests (reverse proxy)
+      const ip = req.ip || req.connection.remoteAddress;
+      if (ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1") return next();
       res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
     });
   }

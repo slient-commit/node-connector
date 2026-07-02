@@ -114,7 +114,7 @@ router.post(
   }
 );
 
-router.delete(
+router.post(
   "/delete",
   require("../middleware/authenticateToken"),
   async (req, res) => {

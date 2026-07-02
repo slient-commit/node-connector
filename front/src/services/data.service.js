@@ -31,7 +31,7 @@ export default class DataService {
   }
 
   async deleteSheet(uid) {
-    return await this.api.delete("/sheet/delete", { body: JSON.stringify({ uid }) });
+    return await this.api.post("/sheet/delete", { uid });
   }
 
   async createNewNode(sheetId, title, pluginId, position, params) {
